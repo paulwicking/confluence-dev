@@ -1,17 +1,31 @@
-# import base64
-# import json
-import logging
-import requests
-# from requests import Request, Session
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 from requests.auth import HTTPBasicAuth
 
-# Debug imports only
-# import importlib  # for importlib.reload()
+import copy
+import json
+import logging
+import os
+import re
+import requests
+import socket
+import ssl
+import sys
+
+
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
+
 
 log = logging.getLogger(__name__)
 
 
-class Confluence(object):
+class Confluence2(object):
     def __init__(self, url, user, password):
         """Set the defaults for the object."""
         self.url = url  # 'http://localhost:8090'
@@ -84,8 +98,115 @@ class Confluence(object):
         # page = requests.get(request, self._auth)
         pass
 
-    def getPageId(self, page, space):
-        """Retuns the numeric id of a confluence page.
+
+
+
+
+
+
+
+class ConfluenceOld(object):
+
+    DEFAULT_OPTIONS = {
+        "server": "http://localhost:8090",
+        "verify": True
+    }
+
+    def __init__(self, profile=None, url="http://localhost:8090/", username=None, password=None, appid=None, debug=False):
+        """
+        Returns a Confluence object by loading the connection details from the `config.ini` file.
+
+        :param profile: The name of the section from config.ini file that stores server config url/username/password
+        :type  profile: ``str``
+
+        :param url: URL of the Confluence server
+        :type  url: ``str``
+
+        :param username: username to use for authentication
+        :type  username: ``str``
+
+        :param password: password to use for authentication
+        :type  password: ``str``
+
+        :return: Confluence -- an instance to a Confluence object.
+        :raises: EnvironmentError
+
+        Usage:
+
+            >>> from confluence import Confluence
+            >>>
+            >>> conf = Confluence(profile='confluence')
+            >>> conf.storePageContent("test","test","hello world!")
+
+        Also create a `config.ini` like this and put it in current directory, user home directory or PYTHONPATH.
+
+        .. code-block:: none
+
+            [confluence]
+            url=https://confluence.atlassian.com
+            # only the `url` is mandatory
+            user=...
+            pass=...
+
+        """
+        def findfile(path):
+            """
+            Find the file named path in the sys.path.
+            Returns the full path name if found, None if not found
+            """
+            paths = [os.getcwd(), '.', os.path.expanduser('~')]
+            paths.extend(sys.path)
+            for dirname in paths:
+                possible = os.path.abspath(os.path.join(dirname, path))
+                if os.path.isfile(possible):
+                    return possible
+            return None
+
+        config = ConfigParser.SafeConfigParser(defaults={'user': username, 'pass': password, 'appid': appid})
+
+        config_file = findfile('config.ini')
+        if debug:
+            print(config_file)
+
+        if not profile:
+            if config_file:
+                config.read(config_file)
+                try:
+                    profile = config.get('general', 'default-confluence-profile')
+                except ConfigParser.NoOptionError:
+                    pass
+
+        if profile:
+            if config_file:
+                config.read(config_file)
+                url = config.get(profile, 'url')
+                username = config.get(profile, 'user')
+                password = config.get(profile, 'pass')
+                appid = config.get(profile, 'appid')
+            else:
+                raise EnvironmentError("%s was not able to locate the config.ini file in current directory, user home directory or PYTHONPATH." % __name__)
+
+        options = Confluence.DEFAULT_OPTIONS
+        options['server'] = url
+        options['username'] = username
+        options['password'] = password
+
+        socket.setdefaulttimeout(120)  # without this there is no timeout, and this may block the requests
+        # 60 - getPages() timeout one with this !
+        self._server = xmlrpclib.ServerProxy(
+            options['server'] +
+            '/rpc/xmlrpc', allow_none=True)  # using Server or ServerProxy ?
+
+        # TODO: get rid of this split and just set self.server, self.token
+        self._token = self._server.confluence1.login(username, password)
+        try:
+            self._token2 = self._server.confluence2.login(username, password)
+        except xmlrpclib.Error:
+            self._token2 = None
+
+    def getPage(self, page, space):
+        """
+        Returns a page object as a dictionary.
 
         :param page: The page name
         :type  page: ``str``
@@ -93,49 +214,74 @@ class Confluence(object):
         :param space: The space name
         :type  space: ``str``
 
-        :rtype: ``int``
-        :return: Page numeric id
+        :return: dictionary. result['content'] contains the body of the page.
         """
+        pass
 
-        # request = self.base_url + f"content?spaceKey={space}?page={page}"
+    def getAttachments(self, page, space):
+        """
+        Returns a attachments as a dictionary.
 
-    def attach_file(self, page, space, files):
-        """Attach a file to a page.
-
-        :parameter page: The page name
+        :param page: The page name
         :type  page: ``str``
 
-        :parameter space: The space name
+        :param space: The space name
         :type  space: ``str``
 
-        :parameter files: The files to upload
+        :return: dictionary. result['content'] contains the body of the page.
+        """
+        pass
+
+    def getAttachedFile(self, page, space, fileName):
+        """
+        Returns a attachment data as byte[].
+
+        :param page: The page name
+        :type  page: ``str``
+
+        :param space: The space name
+        :type  space: ``str``
+
+        :param fileName: The attached file name
+        :type  fileName: ``str``
+        """
+        pass
+
+    def attachFile(self, page, space, files):
+        """
+        Attach (upload) a file to a page
+
+        :param page: The page name
+        :type  page: ``str``
+
+        :param space: The space name
+        :type  space: ``str``
+
+        :param files: The files to upload
         :type  files: ``dict`` where `key` is filename and `value` is the comment.
         """
-        # def attach_file(server, token, space, title, files):      #  duplicate function definition
         pass
 
-    def remove_all_attachments(self, server, token, space, title):
-        pass
+    def getBlogEntries(self, space):
+        """
+        Returns a page object as a Vector.
 
-    def write_page(self, server, token, space, title, content, parent=None):
-        pass
-
-    def get_blog_entries(self, space):
-        """Get all blog entries in the specified space.
-
-        :parameter space: ``str`` Space name.
+        :param space: The space name
+        :type  space: ``str``
         """
         pass
 
-    def get_blog_entry(self, page_id):
-        """Get a specific blog page.
+    def getBlogEntry(self, pageId):
+        """
+        Returns a blog page as a BlogEntry object.
 
-        :parameter page_id: ``int`` The page ID.
+        :param pageId:
         """
         pass
 
-    def store_blog_entry(self, entry):
-        """Store or update blog content.
+    def storeBlogEntry(self, entry):
+        """
+        Store or update blog content.
         (The BlogEntry given as an argument should have space, title and content fields at a minimum.)
 
         :param entry: Blog entry
@@ -146,21 +292,33 @@ class Confluence(object):
         """
         pass
 
-    def add_label_by_name(self, label_name, object_id):
-        """Adds label(s) to the object.
+    def addLabelByName(self, labelName, objectId):
+        """
+        Adds label(s) to the object.
 
-        :param object_id: Such as pageId
-        :type object_id: ``str``
+        :param labelName: Tag Name
+        :type  labelName: ``str``
 
-        :param label_name: Tag Name
-        :type label_name: ``str``
-
-
-        :param objectId:
-        :type  objectId:
+        :param objectId: Such as pageId
+        :type  objectId: ``str``
 
         :rtype: ``bool``
         :return: True if succeeded
+        """
+        pass
+
+    def getPageId(self, page, space):
+        """
+        Retuns the numeric id of a confluence page.
+
+        :param page: The page name
+        :type  page: ``str``
+
+        :param space: The space name
+        :type  space: ``str``
+
+        :rtype: ``int``
+        :return: Page numeric id
         """
         pass
 
@@ -176,6 +334,7 @@ class Confluence(object):
                          Setting 'above' or 'below' instead sets sourcePageId \
                          to be a sibling of targetPageId of targetPageId instead
         """
+
         pass
 
     def storePageContent(self, page, space, content, convert_wiki=True, parent_page=None):
@@ -200,13 +359,13 @@ class Confluence(object):
         :rtype: ``bool``
         :return: `True` if succeeded
         """
+
         pass
 
-    def render_content(self, space, page, a='', b={'style': 'clean'}):
-        """Obtains the HTML content of a wiki page.
+    def renderContent(self, space, page, a='', b={'style': 'clean'}):
+        """
+        Obtains the HTML content of a wiki page.
 
-        :param b:
-        :param a:
         :param page: The page name
         :type  page: ``str``
 
@@ -215,10 +374,12 @@ class Confluence(object):
 
         :return: string: HTML content
         """
+
         pass
 
     def convertWikiToStorageFormat(self, markup):
-        """Converts a wiki text to it's XML/HTML format. Useful if you prefer to generate pages using wiki syntax instead of XML.
+        """
+        Converts a wiki text to it's XML/HTML format. Useful if you prefer to generate pages using wiki syntax instead of XML.
 
         Still, remember that once you cannot retrieve the original wiki text, as confluence is not storing it anymore. \
         Due to this wiki syntax is usefull only for computer generated pages.
@@ -233,6 +394,36 @@ class Confluence(object):
         """
         pass
 
-    def getPagesWithErrors(self, stdout=True, caching=True):
-        """Get pages with formatting errors."""
+    def getSpaces(self):
         pass
+
+    def getPages(self, space):
+        """
+        Get pages in a space
+
+        :param space: The space name
+        :type  space: ``str``
+
+        :rtype: ``list``
+        :return: a list of pages in a space
+        """
+        pass
+
+    def getPagesWithErrors(self, stdout=True, caching=True):
+        """
+        Get pages with formatting errors
+        """
+        pass
+
+
+# TODO: replace all of these with object methods. Leaving for backwards compatibility for now
+def attach_file(server, token, space, title, files):
+    pass
+
+
+def remove_all_attachments(server, token, space, title):
+    pass
+
+
+def write_page(server, token, space, title, content, parent=None):
+    pass
