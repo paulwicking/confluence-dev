@@ -1,5 +1,5 @@
 import pytest
-from confluence import confluence2
+# from confluence import confluence2
 
 
 @pytest.mark.cannot_fail

@@ -10,6 +10,7 @@ from requests.auth import HTTPBasicAuth
 
 log = logging.getLogger(__name__)
 
+
 class Confluence(object):
     def __init__(self, url, user, password):
         """Set the defaults for the object."""
@@ -28,7 +29,6 @@ class Confluence(object):
             log.critical("Connection is None.")
 
         log.debug("")
-
 
     def connection_valid(self):
         """Checks if a connection to the Confluence server can be established.
@@ -96,7 +96,8 @@ class Confluence(object):
         :rtype: ``int``
         :return: Page numeric id
         """
-        request = self.base_url + f"content?spaceKey={space}?page={page}"
+
+        # request = self.base_url + f"content?spaceKey={space}?page={page}"
 
     def attach_file(self, page, space, files):
         """Attach a file to a page.

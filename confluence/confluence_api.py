@@ -5,6 +5,7 @@ def get_spaces(self):
     """
     pass
 
+
 def get_pages(self, space):
     """Get all pages in a space.
 
@@ -15,6 +16,7 @@ def get_pages(self, space):
     :return: a list of pages in a space
     """
     pass
+
 
 def get_page(self, page, space):
     """Returns a page as dict.
@@ -29,6 +31,7 @@ def get_page(self, page, space):
     # page = requests.get(request, self._auth)
     pass
 
+
 def getPageId(self, page, space):
     """Retuns the numeric id of a confluence page.
 
@@ -42,6 +45,7 @@ def getPageId(self, page, space):
     :return: Page numeric id
     """
     pass
+
 
 def attach_file(self, page, space, files):
     """Attach a file to a page.
@@ -58,11 +62,14 @@ def attach_file(self, page, space, files):
     # def attach_file(server, token, space, title, files):      #  duplicate function definition
     pass
 
+
 def remove_all_attachments(self, server, token, space, title):
     pass
 
+
 def write_page(self, server, token, space, title, content, parent=None):
     pass
+
 
 def get_blog_entries(self, space):
     """Get all blog entries in the specified space.
@@ -71,12 +78,14 @@ def get_blog_entries(self, space):
     """
     pass
 
+
 def get_blog_entry(self, page_id):
     """Get a specific blog page.
 
     :parameter page_id: ``int`` The page ID.
     """
     pass
+
 
 def store_blog_entry(self, entry):
     """Store or update blog content.
@@ -89,6 +98,7 @@ def store_blog_entry(self, entry):
     :return: `true` if succeeded
     """
     pass
+
 
 def add_label_by_name(self, label_name, object_id):
     """Adds label(s) to the object.
@@ -108,6 +118,7 @@ def add_label_by_name(self, label_name, object_id):
     """
     pass
 
+
 def movePage(self, sourcePageIds, targetPageId, space, position='append'):
     """
     Moves sourcePage to be a child of targetPage by default.  Modify 'position' to either 'above' or 'below'
@@ -121,6 +132,7 @@ def movePage(self, sourcePageIds, targetPageId, space, position='append'):
                      to be a sibling of targetPageId of targetPageId instead
     """
     pass
+
 
 def storePageContent(self, page, space, content, convert_wiki=True, parent_page=None):
     """
@@ -146,6 +158,7 @@ def storePageContent(self, page, space, content, convert_wiki=True, parent_page=
     """
     pass
 
+
 def render_content(self, space, page, a='', b={'style': 'clean'}):
     """Obtains the HTML content of a wiki page.
 
@@ -160,6 +173,7 @@ def render_content(self, space, page, a='', b={'style': 'clean'}):
     :return: string: HTML content
     """
     pass
+
 
 def convertWikiToStorageFormat(self, markup):
     """Converts a wiki text to it's XML/HTML format. Useful if you prefer to generate pages using wiki syntax instead of XML.
@@ -176,6 +190,7 @@ def convertWikiToStorageFormat(self, markup):
     :return: the text to store (HTML)
     """
     pass
+
 
 def getPagesWithErrors(self, stdout=True, caching=True):
     """Get pages with formatting errors."""
