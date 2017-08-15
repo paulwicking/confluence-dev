@@ -1,102 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+from requests.auth import HTTPBasicAuth
 
 import copy
 import json
 import logging
 import os
 import re
+import requests
 import socket
 import ssl
 import sys
-
-try:
-    import xmlrpclib
-except ImportError:
-    import xmlrpc.client as xmlrpclib
 
 try:
     import ConfigParser
 except ImportError:
     import configparser as ConfigParser
 
-
-# TODO: replace all of these with object methods. Leaving for backwards compatibility for now
-def attach_file(server, token, space, title, files):
-    existing_page = server.confluence1.getPage(token, space, title)
-
-    for filename in files.keys():
-        try:
-            server.confluence1.removeAttachment(token, existing_page["id"], filename)
-        except Exception as e:
-            logging.exception("Skipping %s exception in removeAttachment" % e)
-        content_types = {
-            "gif": "image/gif",
-            "png": "image/png",
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-        }
-        extension = os.path.spl(filename)[1]
-        ty = content_types.get(extension, "application/binary")
-        attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
-        f = open(filename, "rb")
-        try:
-            byts = f.read()
-            logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
-            server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
-            logging.info("done")
-        except Exception:
-            logging.exception("Unable to attach %s", filename)
-        finally:
-            f.close()
-
-
-def remove_all_attachments(server, token, space, title):
-    existing_page = server.confluence1.getPage(token, space, title)
-
-    # Get a list of attachments
-    files = server.confluence1.getAttachments(token, existing_page["id"])
-
-    # Iterate through them all, removing each
-    numfiles = len(files)
-    i = 0
-    for f in files:
-        filename = f['fileName']
-        print("Removing %d of %d (%s)..." % (i, numfiles, filename))
-        server.confluence1.removeAttachment(token, existing_page["id"], filename)
-        i += 1
-
-
-def write_page(server, token, space, title, content, parent=None):
-    parent_id = None
-    if parent is not None:
-        try:
-            # Find out the ID of the parent page
-            parent_id = server.confluence1.getPage(token, space, parent)['id']
-            print("parent page id is %s" % parent_id)
-        except:
-            print("couldn't find parent page; ignoring error...")
-
-    try:
-        existing_page = server.confluence1.getPage(token, space, title)
-    except:
-        # In case it doesn't exist
-        existing_page = {"space": space, "title": title}
-
-    if parent_id is not None:
-        existing_page["parentId"] = parent_id
-
-    existing_page["content"] = content
-    existing_page = server.confluence1.storePage(token, existing_page)
-
-
-class WikiString(str):
-    pass
-
-
-class XMLString(str):
-    pass
+log = logging.getLogger(__name__)
 
 
 class Confluence(object):
@@ -106,7 +28,7 @@ class Confluence(object):
         "verify": True
     }
 
-    def __init__(self, profile=None, url="http://localhost:8090/", username=None, password=None, appid=None, debug=False):
+    def __init__(self, profile=None, url="http://localhost:8090/", username=None, password=None, app_id=None, debug=False):
         """
         Returns a Confluence object by loading the connection details from the `config.ini` file.
 
@@ -143,22 +65,22 @@ class Confluence(object):
             pass=...
 
         """
-        def findfile(path):
+        def find_file(path):
             """
             Find the file named path in the sys.path.
             Returns the full path name if found, None if not found
             """
             paths = [os.getcwd(), '.', os.path.expanduser('~')]
             paths.extend(sys.path)
-            for dirname in paths:
-                possible = os.path.abspath(os.path.join(dirname, path))
+            for dir_name in paths:
+                possible = os.path.abspath(os.path.join(dir_name, path))
                 if os.path.isfile(possible):
                     return possible
             return None
 
-        config = ConfigParser.SafeConfigParser(defaults={'user': username, 'pass': password, 'appid': appid})
+        config = ConfigParser.SafeConfigParser(defaults={'user': username, 'pass': password, 'app_id': app_id})
 
-        config_file = findfile('config.ini')
+        config_file = find_file('config.ini')
         if debug:
             print(config_file)
 
@@ -176,27 +98,44 @@ class Confluence(object):
                 url = config.get(profile, 'url')
                 username = config.get(profile, 'user')
                 password = config.get(profile, 'pass')
-                appid = config.get(profile, 'appid')
+                app_id = config.get(profile, 'app_id')
             else:
-                raise EnvironmentError("%s was not able to locate the config.ini file in current directory, user home directory or PYTHONPATH." % __name__)
+                raise EnvironmentError(
+                    '%s was not able to locate the config.ini file.\n'
+                    'config.ini must be in current directory, user home directory or PYTHONPATH.'
+                    % __name__)
 
         options = Confluence.DEFAULT_OPTIONS
-        options['server'] = url
+        options['base_url'] = url
         options['username'] = username
         options['password'] = password
 
+        self.connection = requests.Session()
+        self.connection.auth = HTTPBasicAuth(options['username'], options['password'])
+
         socket.setdefaulttimeout(120)  # without this there is no timeout, and this may block the requests
         # 60 - getPages() timeout one with this !
-        self._server = xmlrpclib.ServerProxy(
-            options['server'] +
-            '/rpc/xmlrpc', allow_none=True)  # using Server or ServerProxy ?
+        self._server = options['base_url'] + '/rest/api/'
 
-        # TODO: get rid of this split and just set self.server, self.token
-        self._token = self._server.confluence1.login(username, password)
+        if not self.connection_valid():
+            log.critical('Could not establish a valid connection. Check configuration.')
+
+        log.debug("Instantiated object.")
+
+    def connection_valid(self):
+        """Checks if a connection to the Confluence server can be established.
+
+        :rtype: Boolean
+        """
         try:
-            self._token2 = self._server.confluence2.login(username, password)
-        except xmlrpclib.Error:
-            self._token2 = None
+            result = self.connection.get(self._server + 'content')
+        except requests.ConnectionError:
+            log.exception('Connection Error: Check username, password and url.')
+            raise requests.ConnectionError('Fatal error. Could not establish a valid connection.')
+
+        if not result.ok:
+            self.connection = None
+        return self.connection is not None
 
     def getPage(self, page, space):
         """
@@ -215,6 +154,36 @@ class Confluence(object):
         else:
             page = self._server.confluence1.getPage(self._token, space, page)
         return page
+
+    def get_page(self, page, space, limit=None):  # TODO: Finish method
+        """Returns a page as dict.
+
+        Returns a page object as a dictionary.
+
+        :param page: The page name
+        :type  page: ``str``
+
+        :param space: The space name
+        :type  space: ``str``
+
+        :param limit: Specify the number of pages to return. Defaults to Confluence's API default.
+        :type  limit: ``int``
+
+        :return: dictionary. result['content'] contains the body of the page.
+        """
+
+        request = self._server + 'content?title=' + page + '&spaceKey=' + space
+        # if limit:  # TODO: implement limit for this call
+        #     request = request + '?limit={}'.format(limit)
+        response = self.connection.get(request)
+        if not response.ok:
+            return None
+        try:
+            result = response.json()
+        except ValueError:
+            log.exception("Could not parse JSON data when calling {}".format(function.__name__))
+
+        return result
 
     def getAttachments(self, page, space):
         """
@@ -513,8 +482,54 @@ class Confluence(object):
         else:
             return self._server.confluence.convertWikiToStorageFormat(self._token2, markup)
 
+    #  pending deprecation: use get_spaces() in the future
     def getSpaces(self):
-        return self._server.confluence2.getSpaces(self._token2)
+        function_name = str(sys._getframe().f_code.co_name) + '()'
+        log.warning("Deprecated: %s. Passing to new function, using default result limit.", function_name)
+        return self.get_spaces(results='clean')
+
+    def get_spaces(self, limit=None, results=None):
+        """Returns n spaces on the server as dictionary, where n is limit.
+
+        :param limit: Specify the number of spaces to return. Defaults to Confluence's API default.
+        :type  limit: ``int``
+
+        :param results: Optional specifier for result formatting. None or clean. 'clean' mimics old behavior.
+        :type  results: ``str``
+
+        :rtype: ``dict`` or None.
+        :return: List of spaces on the server up to limit, or None if the request fails.
+        """
+        request = self._server + 'space'
+        if limit:
+            request = request + '?limit={}'.format(limit)
+        response = self.connection.get(request)
+        if not response.ok:
+            status = response.status_code
+            log.debug("Response not okay: %s", status)
+            return None
+        try:
+            result = response.json()
+        except ValueError:
+            log.exception("Could not parse JSON data when calling {}".format(function.__name__))
+            return None
+            pass
+
+        # Clean results mimics the old behavior (response from xmlrpc connection)
+        # This should probably be removed in future versions.
+        if str(results).lower() == 'clean':
+            clean_results = []
+            base_url = result['_links']['base'] + '/display/'
+            for entry in result['results']:
+                clean_results.append(
+                    {'key': entry['key'],
+                     'name': entry['name'],
+                     'type': entry['type'],
+                     'url': base_url + entry['key']})
+            log.debug("Spaces returned with clean results.")
+            return clean_results
+
+        return result
 
     def getPages(self, space):
         """
@@ -592,3 +607,80 @@ class Confluence(object):
             for x in stats:
                 print("'%s' : %s" % (x, stats[x]))
         return result
+
+
+# TODO: replace all of these with object methods. Leaving for backwards compatibility for now
+def attach_file(server, token, space, title, files):
+    existing_page = server.confluence1.getPage(token, space, title)
+
+    for filename in files.keys():
+        try:
+            server.confluence1.removeAttachment(token, existing_page["id"], filename)
+        except Exception as e:
+            logging.exception("Skipping %s exception in removeAttachment" % e)
+        content_types = {
+            "gif": "image/gif",
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+        }
+        extension = os.path.spl(filename)[1]
+        ty = content_types.get(extension, "application/binary")
+        attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
+        f = open(filename, "rb")
+        try:
+            byts = f.read()
+            logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
+            server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
+            logging.info("done")
+        except Exception:
+            logging.exception("Unable to attach %s", filename)
+        finally:
+            f.close()
+
+
+def remove_all_attachments(server, token, space, title):
+    existing_page = server.confluence1.getPage(token, space, title)
+
+    # Get a list of attachments
+    files = server.confluence1.getAttachments(token, existing_page["id"])
+
+    # Iterate through them all, removing each
+    numfiles = len(files)
+    i = 0
+    for f in files:
+        filename = f['fileName']
+        print("Removing %d of %d (%s)..." % (i, numfiles, filename))
+        server.confluence1.removeAttachment(token, existing_page["id"], filename)
+        i += 1
+
+
+def write_page(server, token, space, title, content, parent=None):
+    parent_id = None
+    if parent is not None:
+        try:
+            # Find out the ID of the parent page
+            parent_id = server.confluence1.getPage(token, space, parent)['id']
+            print("parent page id is %s" % parent_id)
+        except:
+            print("couldn't find parent page; ignoring error...")
+
+    try:
+        existing_page = server.confluence1.getPage(token, space, title)
+    except:
+        # In case it doesn't exist
+        existing_page = {"space": space, "title": title}
+
+    if parent_id is not None:
+        existing_page["parentId"] = parent_id
+
+    existing_page["content"] = content
+    existing_page = server.confluence1.storePage(token, existing_page)
+
+
+class WikiString(str):
+    pass
+
+
+class XMLString(str):
+    pass

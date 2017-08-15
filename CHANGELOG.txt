@@ -1,0 +1,22 @@
+Completed:
+refactor: appid -> app_id
+
+def findfile(path) -> def find_file(path):
+	[...]
+		for dirname in paths: -> for dir_name in paths:
+	[...]
+
+Added valid_connection() method to check connection status.
+
+Introduced options['base_url']
+Introduced requests.HTTPBasicAuth for authentication.
+Using requests.Session() for persistence
+Introduced module level logger
+refactor: getSpaces() now returns get_spaces(results='clean')
+
+TODO:
+Finish deprecation decorator.
+options['base_url'] #  Not really used anywhere, check for necessity
+Remove all tokens.
+Remove all xmlrpc, replace with rest.
+Remove references to usernames / passwords in tests.

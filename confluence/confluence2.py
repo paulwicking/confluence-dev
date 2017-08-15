@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-# -*- coding: utf-8 -*-
 from __future__ import print_function
 from requests.auth import HTTPBasicAuth
+from functools import partial
 
 import copy
+import functools
 import json
 import logging
 import os
@@ -14,7 +14,7 @@ import requests
 import socket
 import ssl
 import sys
-
+import warnings
 
 try:
     import ConfigParser
@@ -25,11 +25,43 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 
-class Confluence2(object):
-    def __init__(self, url, user, password):
+def _pending_deprecation(old_function, replacement=None, reason=None):
+    """Decorator for soon-to-be deprecated functions. Produces warning.
+
+    :param old_function: The function that will be deprecated.
+    :type  old_function: ``function``
+
+    :param replacement: Optional replacement function.
+    :type  replacement: ``function``
+
+    :param reason: Optional string describing the reason.
+    :type  reason: ``str``
+    """
+
+    @functools.wraps(old_function)
+    def new_function(*args, **kwargs):
+        warnings.simplefilter('always', PendingDeprecationWarning)
+        warnings.warn('{} will be deprecated in the future.'.format(old_function.__name__),
+                      category=PendingDeprecationWarning, stacklevel=2)
+        if replacement:
+            warnings.warn('Use {} instead'.format(replacement.__name__),
+                          category=PendingDeprecationWarning, stacklevel=2)
+        if reason:
+            warnings.warn('Reason: {}'.format(str(reason)),
+                          category=PendingDeprecationWarning, stacklevel=2)
+        warnings.simplefilter('default', PendingDeprecationWarning)
+
+        return old_function(*args, **kwargs)
+
+    return new_function
+# pending_deprecation = partial(_pending_deprecation,
+
+
+class Confluence(object):
+    def __init__(self, url, username, password):
         """Set the defaults for the object."""
-        self.url = url  # 'http://localhost:8090'
-        self._user = user  # 'myusername'
+        self._url = url  # 'http://localhost:8090'
+        self._user = username  # 'myusername'
         self._password = password  # 'mypassword'
 
         # Set the base URL for REST calls.
@@ -40,9 +72,9 @@ class Confluence2(object):
         self.connection.auth = HTTPBasicAuth(self._user, self._password)
 
         if not self.connection_valid():
-            log.critical("Connection is None.")
+            log.critical('Connection is None.')
 
-        log.debug("")
+        log.debug("Instantiated object.")
 
     def connection_valid(self):
         """Checks if a connection to the Confluence server can be established.
@@ -50,10 +82,10 @@ class Confluence2(object):
         :rtype: Boolean
         """
         try:
-            result = self.connection.get(self.url)
+            result = self.connection.get(self.base_url + 'content')
         except requests.ConnectionError:
-            log.exception("Connection Error: Check username, password and url.")
-            raise requests.ConnectionError("Fatal error. Could not establish a valid connection.")
+            log.exception('Connection Error: Check username, password and url.')
+            raise requests.ConnectionError('Fatal error. Could not establish a valid connection.')
 
         if not result.ok:
             self.connection = None
@@ -65,7 +97,7 @@ class Confluence2(object):
         :rtype: TODO @wowsuchnamaste insert rtype
         """
 
-        request = self.base_url + "space"
+        request = self.base_url + 'space'
         response = self.connection.get(request)
         if not response.ok:
             response = False

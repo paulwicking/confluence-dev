@@ -1,10 +1,21 @@
 import pytest
-# from confluence import confluence2
+from confluence import confluence2
 
 
-@pytest.mark.cannot_fail
-def test_tests():
-    """A test test, testing we're not failing tests for no reason."""
+@pytest.mark.xfail
+def test_valid_connection():
+    """Checks that valid_connection() works and that it passes for the right reason."""
+    conf = confluence2.Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+    url_to_get = conf.base_url + 'content'
+    response = conf.connection.get(url_to_get)
+
+    assert conf.connection_valid() is True
+    assert isinstance(url_to_get, object)
+    assert response.json()['_links']['self'] == url_to_get
+
+
+def test_invalid_connections_raise_exception():
+    """Tests that invalid connections raise ConnectionError exception."""
     pass
 
 
