@@ -1,5 +1,5 @@
 language: python
-sudo: false
+sudo: true 
 matrix:
   fast_finish: false
 os:
@@ -9,6 +9,12 @@ python:
 - '3.4'
 - '3.5'
 - '3.6'
+before_install: # check before_install vs before_script
+- echo "deb https://sdkrepo.atlassian.com/debian/ stable contrib" | sudo tee -a /etc/apt/sources.list
+- sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys B07804338C015B73
+- sudo apt-get install apt-transport-https
+- sudo apt-get update -qq
+- sudo apt-get install atlassian-plugin-sdk
 install:
 - pip -q --log dist/pip.log install --upgrade pip setuptools tox-travis py wheel
 - python setup.py sdist bdist_wheel install
@@ -22,9 +28,9 @@ script:
 # validates that the build source distribution is installable using the old easy_install
 - pip uninstall -y $PACKAGE_NAME && easy_install ./dist/$PACKAGE_NAME-*.tar.gz
 after_success:
-- coveralls
-- bash <(curl -s https://codecov.io/bash)
-- requires.io update-site -t ac3bbcca32ae03237a6aae2b02eb9411045489bb -r
+#- coveralls
+#- bash <(curl -s https://codecov.io/bash)
+#- requires.io update-site -t ac3bbcca32ae03237a6aae2b02eb9411045489bb -r
 notifications:
   email:
   - paulwicking@gmail.com
