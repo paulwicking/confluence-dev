@@ -1,11 +1,11 @@
 import pytest
-from confluence import Confluence
+from confluence import confluence
 import warnings
 
 
 def test_valid_connection():
     """Checks that valid_connection() works and that it passes for the right reason."""
-    conf = Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+    conf = confluence.Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
     url_to_get = conf._server + 'content'
     response = conf.connection.get(url_to_get)
 
@@ -21,7 +21,7 @@ def test_invalid_connections_raise_exception():
 
 def test_connection_to_atlassian_sdk():
     """Test that we can connect to the Atlassian SDK during test"""
-    conf = Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+    conf = confluence.Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
     result = conf.getSpaces()
     assert isinstance(conf, object)
     assert not isinstance(conf, int)
@@ -34,7 +34,7 @@ def test_connection_to_atlassian_sdk():
 def test_pending_deprecation_warnings():
     with warnings.catch_warnings(record=True) as warn:
         warnings.simplefilter('always')
-        conf = Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+        conf = confluence.Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
         conf.getSpaces()
 
         assert len(warn) == 1
