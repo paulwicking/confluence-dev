@@ -34,7 +34,7 @@ def test_connection_to_atlassian_sdk():
 def test_pending_deprecation_warnings():
     with warnings.catch_warnings(record=True) as warn:
         warnings.simplefilter('always')
-        conf = confluence.Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+        conf = confluence.Confluence(url='http://127.0.0.1:1990/confluence', username='admin', password='admin')
         conf.getSpaces()
 
         assert len(warn) == 1
