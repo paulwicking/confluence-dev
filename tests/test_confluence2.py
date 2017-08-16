@@ -3,6 +3,7 @@ from confluence import confluence
 import warnings
 
 
+@pytest.mark.xfail
 def test_valid_connection():
     """Checks that valid_connection() works and that it passes for the right reason."""
     conf = confluence.Confluence(url='http://127.0.0.1:1990/confluence', username='admin', password='admin')
