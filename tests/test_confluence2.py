@@ -1,12 +1,12 @@
 import pytest
-from confluence import confluence2
+from confluence import Confluence
+import warnings
 
 
-@pytest.mark.xfail
 def test_valid_connection():
     """Checks that valid_connection() works and that it passes for the right reason."""
-    conf = confluence2.Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
-    url_to_get = conf.base_url + 'content'
+    conf = Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+    url_to_get = conf._server + 'content'
     response = conf.connection.get(url_to_get)
 
     assert conf.connection_valid() is True
@@ -17,6 +17,29 @@ def test_valid_connection():
 def test_invalid_connections_raise_exception():
     """Tests that invalid connections raise ConnectionError exception."""
     pass
+
+
+def test_connection_to_atlassian_sdk():
+    """Test that we can connect to the Atlassian SDK during test"""
+    conf = Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+    result = conf.getSpaces()
+    assert isinstance(conf, object)
+    assert not isinstance(conf, int)
+    assert 'key' in result[0]
+    assert result[0]['name'] == 'Demonstration Space'
+    assert 'pink fluffy unicorns' not in result[0]
+
+
+@pytest.mark.xfail
+def test_pending_deprecation_warnings():
+    with warnings.catch_warnings(record=True) as warn:
+        warnings.simplefilter('always')
+        conf = Confluence(url='http://localhost:1990/confluence', username='admin', password='admin')
+        conf.getSpaces()
+
+        assert len(warn) == 1
+        assert issubclass(warn[-1].category, PendingDeprecationWarning)
+        assert "deprecated" in str(warn[-1].message)
 
 
 def test_get_spaces():
