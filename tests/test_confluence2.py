@@ -20,7 +20,7 @@ def test_invalid_connections_raise_exception():
     pass
 
 
-@pytest.xfail
+@pytest.mark.xfail
 def test_connection_to_atlassian_sdk():
     """Test that we can connect to the Atlassian SDK during test"""
     conf = confluence.Confluence(url='http://127.0.0.1:1990/confluence', username='admin', password='admin')
