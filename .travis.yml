@@ -9,17 +9,19 @@ python:
 - '3.4'
 - '3.5'
 - '3.6'
-before_install: # check before_install vs before_script
+before_install:
 - echo "deb https://sdkrepo.atlassian.com/debian/ stable contrib" | sudo tee -a /etc/apt/sources.list
 - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys B07804338C015B73
-- sudo apt-get install apt-transport-https
 - sudo apt-get update -qq
-- sudo apt-get install atlassian-plugin-sdk
 install:
+- sudo apt-get install apt-transport-https
+- sudo apt-get install atlassian-plugin-sdk
 - pip -q --log dist/pip.log install --upgrade pip setuptools tox-travis py wheel
 - python setup.py sdist bdist_wheel install
 - pip install ./dist/*.whl
 - pip --version
+before_script:
+- atlas-run-standalone --product confluence --version 5.9.14
 script:
 - export PACKAGE_NAME=$(python setup.py --name)
 - export PACKAGE_VERSION=$(python setup.py --version)
