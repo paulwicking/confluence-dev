@@ -2,17 +2,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 from requests.auth import HTTPBasicAuth
-from functools import partial
+# from functools import partial
 
-import copy
+# import copy
 import functools
-import json
+# import json
 import logging
 import os
-import re
+# import re
 import requests
 import socket
-import ssl
+# import ssl
 import sys
 import warnings
 
@@ -131,12 +131,6 @@ class Confluence(object):
         pass
 
 
-
-
-
-
-
-
 class ConfluenceOld(object):
 
     DEFAULT_OPTIONS = {
@@ -225,16 +219,16 @@ class ConfluenceOld(object):
 
         socket.setdefaulttimeout(120)  # without this there is no timeout, and this may block the requests
         # 60 - getPages() timeout one with this !
-        self._server = xmlrpclib.ServerProxy(
-            options['server'] +
-            '/rpc/xmlrpc', allow_none=True)  # using Server or ServerProxy ?
+        # self._server = xmlrpclib.ServerProxy(
+        #     options['server'] +
+        #     '/rpc/xmlrpc', allow_none=True)  # using Server or ServerProxy ?
 
         # TODO: get rid of this split and just set self.server, self.token
-        self._token = self._server.confluence1.login(username, password)
-        try:
-            self._token2 = self._server.confluence2.login(username, password)
-        except xmlrpclib.Error:
-            self._token2 = None
+        # self._token = self._server.confluence1.login(username, password)
+        # try:
+        #    self._token2 = self._server.confluence2.login(username, password)
+        # except xmlrpclib.Error:
+        #     self._token2 = None
 
     def getPage(self, page, space):
         """

@@ -3,14 +3,14 @@
 from __future__ import print_function
 from requests.auth import HTTPBasicAuth
 
-import copy
-import json
+# import copy
+# import json
 import logging
 import os
-import re
+# import re
 import requests
 import socket
-import ssl
+# import ssl
 import sys
 
 try:
@@ -149,11 +149,11 @@ class Confluence(object):
 
         :return: dictionary. result['content'] contains the body of the page.
         """
-        if self._token2:
-            page = self._server.confluence2.getPage(self._token2, space, page)
-        else:
-            page = self._server.confluence1.getPage(self._token, space, page)
-        return page
+#        if self._token2:
+#            page = self._server.confluence2.getPage(self._token2, space, page)
+#        else:
+#            page = self._server.confluence1.getPage(self._token, space, page)
+#        return page
 
     def get_page(self, page, space, limit=None):  # TODO: Finish method
         """Returns a page as dict.
@@ -181,7 +181,7 @@ class Confluence(object):
         try:
             result = response.json()
         except ValueError:
-            log.exception("Could not parse JSON data when calling {}".format(function.__name__))
+            log.exception("Could not parse JSON data when calling method")
 
         return result
 
@@ -197,19 +197,20 @@ class Confluence(object):
 
         :return: dictionary. result['content'] contains the body of the page.
         """
-        if self._token2:
-            server = self._server.confluence2
-            token = self._token2
-        else:
-            server = self._server.confluence1
-            token = self._token1
-        existing_page = server.getPage(token, space, page)
-        try:
-            attachments = server.getAttachments(token, existing_page["id"])
-        except xmlrpclib.Fault:
-            logging.info("No existing attachment")
-            attachments = None
-        return attachments
+#        if self._token2:
+#            server = self._server.confluence2
+#            token = self._token2
+#        else:
+#            server = self._server.confluence1
+#            token = self._token1
+#        existing_page = server.getPage(token, space, page)
+#        # try:
+#        #     attachments = server.getAttachments(token, existing_page["id"])
+#        # except xmlrpclib.Fault:
+#        #     logging.info("No existing attachment")
+#        #     attachments = None
+#        return attachments
+        pass
 
     def getAttachedFile(self, page, space, fileName):
         """
@@ -224,19 +225,20 @@ class Confluence(object):
         :param fileName: The attached file name
         :type  fileName: ``str``
         """
-        if self._token2:
-            server = self._server.confluence2
-            token = self._token2
-        else:
-            server = self._server.confluence1
-            token = self._token1
-        existing_page = server.getPage(token, space, page)
-        try:
-            DATA = server.getAttachmentData(token, existing_page["id"], fileName, "0")
-        except xmlrpclib.Fault:
-            logging.info("No existing attachment")
-            DATA = None
-        return DATA
+#        if self._token2:
+#            server = self._server.confluence2
+#            token = self._token2
+#        else:
+#            server = self._server.confluence1
+#            token = self._token1
+#        existing_page = server.getPage(token, space, page)
+#        # try:
+#        #     DATA = server.getAttachmentData(token, existing_page["id"], fileName, "0")
+#        # except xmlrpclib.Fault:
+#        #     logging.info("No existing attachment")
+#        #     DATA = None
+#        # return DATA
+        pass
 
     def attachFile(self, page, space, files):
         """
@@ -251,6 +253,7 @@ class Confluence(object):
         :param files: The files to upload
         :type  files: ``dict`` where `key` is filename and `value` is the comment.
         """
+        """
         if self._token2:
             server = self._server.confluence2
             token = self._token2
@@ -259,10 +262,10 @@ class Confluence(object):
             token = self._token1
         existing_page = server.getPage(token, space, page)
         for filename in files.keys():
-            try:
-                server.removeAttachment(token, existing_page["id"], filename)
-            except xmlrpclib.Fault:
-                logging.info("No existing attachment to replace")
+            # try:
+            #     server.removeAttachment(token, existing_page["id"], filename)
+            # except xmlrpclib.Fault:
+            #     logging.info("No existing attachment to replace")
             content_types = {
                 "gif": "image/gif",
                 "png": "image/png",
@@ -273,16 +276,18 @@ class Confluence(object):
             extension = os.path.splitext(filename)[1:]
             ty = content_types.get(extension, "application/binary")
             attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
-            f = open(filename, "rb")
-            try:
-                byts = f.read()
-                logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
-                server.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
-                logging.info("done")
-            except xmlrpclib.Error:
-                logging.exception("Unable to attach %s", filename)
-            finally:
-                f.close()
+            # f = open(filename, "rb")
+            # try:
+            #     byts = f.read()
+            #     logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
+            #     server.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
+            #     logging.info("done")
+            # except xmlrpclib.Error:
+            #     logging.exception("Unable to attach %s", filename)
+            # finally:
+            #     f.close()
+        """
+        pass
 
     def getBlogEntries(self, space):
         """
@@ -291,11 +296,12 @@ class Confluence(object):
         :param space: The space name
         :type  space: ``str``
         """
-        if self._token2:
-            entries = self._server.confluence2.getBlogEntries(self._token2, space)
-        else:
-            entries = self._server.confluence1.getBlogEntries(self._token, space)
-        return entries
+#        if self._token2:
+#            entries = self._server.confluence2.getBlogEntries(self._token2, space)
+#        else:
+#            entries = self._server.confluence1.getBlogEntries(self._token, space)
+#        return entries
+        pass
 
     def getBlogEntry(self, pageId):
         """
@@ -303,11 +309,12 @@ class Confluence(object):
 
         :param pageId:
         """
-        if self._token2:
-            entry = self._server.confluence2.getBlogEntry(self._token2, pageId)
-        else:
-            entry = self._server.confluence1.getBlogEntries(self._token, pageId)
-        return entry
+#        if self._token2:
+#            entry = self._server.confluence2.getBlogEntry(self._token2, pageId)
+#        else:
+#            entry = self._server.confluence1.getBlogEntries(self._token, pageId)
+#        return entry
+        pass
 
     def storeBlogEntry(self, entry):
         """
@@ -320,11 +327,12 @@ class Confluence(object):
         :rtype: ``bool``
         :return: `true` if succeeded
         """
-        if self._token2:
-            blogEntry = self._server.confluence2.storeBlogEntry(self._token2, entry)
-        else:
-            blogEntry = self._server.confluence1.storeBlogEntry(self._token2, entry)
-        return blogEntry
+#        if self._token2:
+#            blogEntry = self._server.confluence2.storeBlogEntry(self._token2, entry)
+#        else:
+#            blogEntry = self._server.confluence1.storeBlogEntry(self._token2, entry)
+#        return blogEntry
+        pass
 
     def addLabelByName(self, labelName, objectId):
         """
@@ -339,11 +347,12 @@ class Confluence(object):
         :rtype: ``bool``
         :return: True if succeeded
         """
-        if self._token2:
-            ret = self._server.confluence2.addLabelByName(self._token2, labelName, objectId)
-        else:
-            ret = self._server.confluence1.addLabelByName(self._token, labelName, objectId)
-        return ret
+#        if self._token2:
+#            ret = self._server.confluence2.addLabelByName(self._token2, labelName, objectId)
+#        else:
+#            ret = self._server.confluence1.addLabelByName(self._token, labelName, objectId)
+#        return ret
+        pass
 
     def getPageId(self, page, space):
         """
@@ -358,11 +367,12 @@ class Confluence(object):
         :rtype: ``int``
         :return: Page numeric id
         """
-        if self._token2:
-            page = self._server.confluence2.getPage(self._token2, space, page)
-        else:
-            page = self._server.confluence1.getPage(self._token, space, page)
-        return page['id']
+#        if self._token2:
+#            page = self._server.confluence2.getPage(self._token2, space, page)
+#        else:
+#            page = self._server.confluence1.getPage(self._token, space, page)
+#        return page['id']
+        pass
 
     def movePage(self, sourcePageIds, targetPageId, space, position='append'):
         """
@@ -377,18 +387,19 @@ class Confluence(object):
                          to be a sibling of targetPageId of targetPageId instead
         """
 
-        if not targetPageId.isdigit():
-            targetPageId = self.getPageId(targetPageId, space)
-        for sourcePageId in sourcePageIds:
-            if not sourcePageId.isdigit():
-                sourcePageId = self.getPageId(sourcePageId, space)
-
-            if self._token2:
-                self._server.confluence2.movePage(self._token2,
-                                                  str(sourcePageId), str(targetPageId), position)
-            else:
-                self._server.confluence1.movePage(self._token2,
-                                                  str(sourcePageId), str(targetPageId), position)
+#        if not targetPageId.isdigit():
+#            targetPageId = self.getPageId(targetPageId, space)
+#        for sourcePageId in sourcePageIds:
+#            if not sourcePageId.isdigit():
+#                sourcePageId = self.getPageId(sourcePageId, space)
+#
+#            if self._token2:
+#                self._server.confluence2.movePage(self._token2,
+#                                                  str(sourcePageId), str(targetPageId), position)
+#            else:
+#                self._server.confluence1.movePage(self._token2,
+#                                                  str(sourcePageId), str(targetPageId), position)
+        pass
 
     def storePageContent(self, page, space, content, convert_wiki=True, parent_page=None):
         """
@@ -412,14 +423,14 @@ class Confluence(object):
         :rtype: ``bool``
         :return: `True` if succeeded
         """
-
+        """
         try:
             data = self.getPage(page, space)
-        except xmlrpclib.Fault:
-            data = {
-                "space": space,
-                "title": page
-            }
+        # except xmlrpclib.Fault:
+        #     data = {
+        #         "space": space,
+        #         "title": page
+        #     }
 
         data['content'] = content
 
@@ -434,6 +445,8 @@ class Confluence(object):
             return self._server.confluence2.storePage(self._token2, data)
         else:
             return self._server.confluence1.storePage(self._token, data)
+        """
+        pass
 
     def renderContent(self, space, page, a='', b={'style': 'clean'}):
         """
@@ -448,19 +461,20 @@ class Confluence(object):
         :return: string: HTML content
         """
 
-        try:
-            if not page.isdigit():
-                page = self.getPageId(page=page, space=space)
-            if self._token2:
-                return self._server.confluence2.renderContent(self._token2, space, page, a, b)
-            else:
-                return self._server.confluence1.renderContent(self._token, space, page, a, b)
-        except ssl.SSLError as err:
-            logging.error("%s while retrieving page %s", err, page)
-            return None
-        except xmlrpclib.Fault as err:
-            logging.error("Failed call to renderContent('%s','%s') : %d : %s", space, page, err.faultCode, err.faultString)
-            raise err
+#        try:
+#            if not page.isdigit():
+#                page = self.getPageId(page=page, space=space)
+#            if self._token2:
+#                return self._server.confluence2.renderContent(self._token2, space, page, a, b)
+#            else:
+#                return self._server.confluence1.renderContent(self._token, space, page, a, b)
+#        except ssl.SSLError as err:
+#            logging.error("%s while retrieving page %s", err, page)
+#            return None
+        # except xmlrpclib.Fault as err:
+        #     logging.error("Failed call to renderContent('%s','%s') : %d : %s", space, page, err.faultCode, err.faultString)
+        #     raise err
+        pass
 
     def convertWikiToStorageFormat(self, markup):
         """
@@ -477,10 +491,11 @@ class Confluence(object):
         :rtype: ``str``
         :return: the text to store (HTML)
         """
-        if self._token2:
-            return self._server.confluence2.convertWikiToStorageFormat(self._token2, markup)
-        else:
-            return self._server.confluence.convertWikiToStorageFormat(self._token2, markup)
+        # if self._token2:
+        #     return self._server.confluence2.convertWikiToStorageFormat(self._token2, markup)
+        # else:
+        #     return self._server.confluence.convertWikiToStorageFormat(self._token2, markup)
+        pass
 
     #  pending deprecation: use get_spaces() in the future
     def getSpaces(self):
@@ -511,7 +526,7 @@ class Confluence(object):
         try:
             result = response.json()
         except ValueError:
-            log.exception("Could not parse JSON data when calling {}".format(function.__name__))
+            log.exception("Could not parse JSON data when calling get_soaces()")
             return None
             pass
 
@@ -541,11 +556,13 @@ class Confluence(object):
         :rtype: ``list``
         :return: a list of pages in a space
         """
-        return self._server.confluence2.getPages(self._token2, space)
+        # return self._server.confluence2.getPages(self._token2, space)
+        pass
 
     def getPagesWithErrors(self, stdout=True, caching=True):
         """
         Get pages with formatting errors
+        """
         """
         result = []
         cnt = 0
@@ -607,8 +624,11 @@ class Confluence(object):
             for x in stats:
                 print("'%s' : %s" % (x, stats[x]))
         return result
+        """
+        pass
 
 
+"""
 # TODO: replace all of these with object methods. Leaving for backwards compatibility for now
 def attach_file(server, token, space, title, files):
     existing_page = server.confluence1.getPage(token, space, title)
@@ -627,16 +647,16 @@ def attach_file(server, token, space, title, files):
         extension = os.path.spl(filename)[1]
         ty = content_types.get(extension, "application/binary")
         attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
-        f = open(filename, "rb")
-        try:
-            byts = f.read()
-            logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
-            server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
-            logging.info("done")
-        except Exception:
-            logging.exception("Unable to attach %s", filename)
-        finally:
-            f.close()
+        # f = open(filename, "rb")
+        # try:
+        #     byts = f.read()
+        #     logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
+        #     server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
+        #     logging.info("done")
+        # except Exception:
+        #     logging.exception("Unable to attach %s", filename)
+        # finally:
+        #     f.close()
 
 
 def remove_all_attachments(server, token, space, title):
@@ -684,3 +704,5 @@ class WikiString(str):
 
 class XMLString(str):
     pass
+
+"""
