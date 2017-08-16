@@ -4,6 +4,8 @@ matrix:
   fast_finish: false
 os:
 - linux
+addons:
+  hostname: python-confluence-test
 python:
 - '2.7'
 - '3.4'
