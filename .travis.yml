@@ -23,8 +23,8 @@ install:
 - pip install ./dist/*.whl
 - pip --version
 before_script:
-- atlas-run-standalone -B -DskipAllPrompts=true --product confluence --version 5.9.14 </dev/zero 2>&1 &
-- sleep 90
+- atlas-run-standalone -q -B -DskipAllPrompts=true --product confluence --version 5.9.14 </dev/zero 2>&1 &
+- sleep 120
 script:
 - export PACKAGE_NAME=$(python setup.py --name)
 - export PACKAGE_VERSION=$(python setup.py --version)
