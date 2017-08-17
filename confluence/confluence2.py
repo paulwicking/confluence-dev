@@ -83,8 +83,12 @@ class Confluence(object):
         """
         try:
             result = self.connection.get(self.base_url + 'content')
-        except requests.ConnectionError as err:
-            log.exception('Connection Error: Check username, password and url.')
+            result.raise_for_status()
+        except requests.exceptions.RequestException as err:
+            log.exception('Connection Error: {}').format(err)
+            print(err)
+            raise err
+        except requests.exceptions.HTTPError as err:
             print(err)
             raise err
 
