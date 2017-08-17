@@ -9,7 +9,7 @@ import logging
 import os
 # import re
 import requests
-import socket
+import sockets
 # import ssl
 import sys
 
@@ -19,7 +19,7 @@ except ImportError:
     import configparser as ConfigParser
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('conf').addHandler(logging.NullHandler())
 
 
 class Confluence(object):
