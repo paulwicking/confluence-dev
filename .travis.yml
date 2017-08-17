@@ -4,8 +4,9 @@ matrix:
   fast_finish: false
 os:
 - linux
-addons:
-  hostname: python-confluence-test
+cache:
+  directories:
+  - $HOME/amps-standalone-confluence-5.9.14
 python:
 - '2.7'
 - '3.4'
