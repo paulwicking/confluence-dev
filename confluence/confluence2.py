@@ -83,9 +83,10 @@ class Confluence(object):
         """
         try:
             result = self.connection.get(self.base_url + 'content')
-        except requests.ConnectionError:
+        except requests.ConnectionError as err:
             log.exception('Connection Error: Check username, password and url.')
-            raise requests.ConnectionError('Fatal error. Could not establish a valid connection.')
+            print(err)
+            raise err
 
         if not result.ok:
             self.connection = None
