@@ -9,7 +9,7 @@ import logging
 import os
 # import re
 import requests
-import sockets
+import socket
 # import ssl
 import sys
 
