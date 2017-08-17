@@ -19,6 +19,9 @@ except ImportError:
     import configparser as ConfigParser
 
 
+log = logging.getLogger(__name__)
+
+
 class Confluence(object):
 
     DEFAULT_OPTIONS = {
@@ -116,9 +119,9 @@ class Confluence(object):
         self._server = options['base_url'] + '/rest/api/'
 
         if not self.connection_valid():
-            logging.critical('Could not establish a valid connection. Check configuration.')
+            log.critical('Could not establish a valid connection. Check configuration.')
 
-        logging.debug("Instantiated object.")
+        log.debug("Instantiated object.")
 
     def connection_valid(self):
         """Checks if a connection to the Confluence server can be established.
@@ -128,7 +131,7 @@ class Confluence(object):
         try:
             result = self.connection.get(self._server + 'content')
         except requests.ConnectionError as err:
-            logging.exception('Connection Error: Check username, password and url.')
+            log.exception('Connection Error: Check username, password and url.')
             raise err
 
         if not result.ok:
@@ -179,7 +182,7 @@ class Confluence(object):
         try:
             result = response.json()
         except ValueError:
-            logging.exception("Could not parse JSON data when calling method")
+            log.exception("Could not parse JSON data when calling method")
 
         return result
 
@@ -498,7 +501,7 @@ class Confluence(object):
     #  pending deprecation: use get_spaces() in the future
     def getSpaces(self):
         function_name = str(sys._getframe().f_code.co_name) + '()'
-        logging.warning("Deprecated: %s. Passing to new function, using default result limit.", function_name)
+        log.warning("Deprecated: %s. Passing to new function, using default result limit.", function_name)
         return self.get_spaces(results='clean')
 
     def get_spaces(self, limit=None, results=None):
@@ -519,12 +522,12 @@ class Confluence(object):
         response = self.connection.get(request)
         if not response.ok:
             status = response.status_code
-            logging.debug("Response not okay: %s", status)
+            log.debug("Response not okay: %s", status)
             return None
         try:
             result = response.json()
         except ValueError:
-            logging.exception("Could not parse JSON data when calling get_soaces()")
+            log.exception("Could not parse JSON data when calling get_soaces()")
             return None
 
         # Clean results mimics the old behavior (response from xmlrpc connection)
@@ -538,7 +541,7 @@ class Confluence(object):
                      'name': entry['name'],
                      'type': entry['type'],
                      'url': base_url + entry['key']})
-            logging.debug("Spaces returned with clean results.")
+            log.debug("Spaces returned with clean results.")
             return clean_results
 
         return result
