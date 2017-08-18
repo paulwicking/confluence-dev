@@ -3,15 +3,22 @@
 from __future__ import print_function
 from requests.auth import HTTPBasicAuth
 
-# import copy
-# import json
+import copy
+import functools
+import json
 import logging
 import os
-# import re
+import re
 import requests
 import socket
-# import ssl
+import ssl
 import sys
+import warnings
+
+try:
+    import xmlrpclib
+except ImportError:
+    import xmlrpc.client as xmlrpclib
 
 try:
     import ConfigParser
@@ -19,9 +26,105 @@ except ImportError:
     import configparser as ConfigParser
 
 
-log = logging.getLogger('conf').addHandler(logging.NullHandler())
+def deprecate_xmlrpc_notification(func):
+    """Decorator for xmlrpc deprecation warnings."""
+
+    @functools.wraps(func)
+    def new_func(*args, **kwargs):
+        # warnings.simplefilter('always', PendingDeprecationWarning)  # Un-comment this line to always display warnings.
+        warnings.warn(
+            "{} will be rewritten to use the Atlassian REST API in future versions.\n"
+            "This change will introduce changes in the module method responses.".format(func.__name__),
+            category=PendingDeprecationWarning,
+            stacklevel=2)
+        warnings.simplefilter('default', PendingDeprecationWarning)
+        return func(*args, **kwargs)
+    return new_func
 
 
+# TODO: replace all of these with object methods. Leaving for backwards compatibility for now
+@deprecate_xmlrpc_notification
+def attach_file(server, token, space, title, files):
+    existing_page = server.confluence1.getPage(token, space, title)
+
+    for filename in files.keys():
+        try:
+            server.confluence1.removeAttachment(token, existing_page["id"], filename)
+        except Exception as e:
+            logging.exception("Skipping %s exception in removeAttachment" % e)
+        content_types = {
+            "gif": "image/gif",
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+        }
+        extension = os.path.spl(filename)[1]
+        ty = content_types.get(extension, "application/binary")
+        attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
+        f = open(filename, "rb")
+        try:
+            byts = f.read()
+            logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
+            server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
+            logging.info("done")
+        except Exception:
+            logging.exception("Unable to attach %s", filename)
+        finally:
+            f.close()
+
+
+@deprecate_xmlrpc_notification
+def remove_all_attachments(server, token, space, title):
+    existing_page = server.confluence1.getPage(token, space, title)
+
+    # Get a list of attachments
+    files = server.confluence1.getAttachments(token, existing_page["id"])
+
+    # Iterate through them all, removing each
+    numfiles = len(files)
+    i = 0
+    for f in files:
+        filename = f['fileName']
+        print("Removing %d of %d (%s)..." % (i, numfiles, filename))
+        server.confluence1.removeAttachment(token, existing_page["id"], filename)
+        i += 1
+
+
+@deprecate_xmlrpc_notification
+def write_page(server, token, space, title, content, parent=None):
+    parent_id = None
+    if parent is not None:
+        try:
+            # Find out the ID of the parent page
+            parent_id = server.confluence1.getPage(token, space, parent)['id']
+            print("parent page id is %s" % parent_id)
+        except:
+            print("couldn't find parent page; ignoring error...")
+
+    try:
+        existing_page = server.confluence1.getPage(token, space, title)
+    except:
+        # In case it doesn't exist
+        existing_page = {"space": space, "title": title}
+
+    if parent_id is not None:
+        existing_page["parentId"] = parent_id
+
+    existing_page["content"] = content
+    existing_page = server.confluence1.storePage(token, existing_page)
+
+
+@deprecate_xmlrpc_notification
+class WikiString(str):
+    pass
+
+
+@deprecate_xmlrpc_notification
+class XMLString(str):
+    pass
+
+
+@deprecate_xmlrpc_notification
 class Confluence(object):
 
     DEFAULT_OPTIONS = {
@@ -29,7 +132,7 @@ class Confluence(object):
         "verify": True
     }
 
-    def __init__(self, profile=None, url="http://localhost:8090/", username=None, password=None, app_id=None, debug=False):
+    def __init__(self, profile=None, url="http://localhost:8090/", username=None, password=None, appid=None, debug=False):
         """
         Returns a Confluence object by loading the connection details from the `config.ini` file.
 
@@ -66,22 +169,22 @@ class Confluence(object):
             pass=...
 
         """
-        def find_file(path):
+        def findfile(path):
             """
             Find the file named path in the sys.path.
             Returns the full path name if found, None if not found
             """
             paths = [os.getcwd(), '.', os.path.expanduser('~')]
             paths.extend(sys.path)
-            for dir_name in paths:
-                possible = os.path.abspath(os.path.join(dir_name, path))
+            for dirname in paths:
+                possible = os.path.abspath(os.path.join(dirname, path))
                 if os.path.isfile(possible):
                     return possible
             return None
 
-        config = ConfigParser.SafeConfigParser(defaults={'user': username, 'pass': password, 'app_id': app_id})
+        config = ConfigParser.SafeConfigParser(defaults={'user': username, 'pass': password, 'appid': appid})
 
-        config_file = find_file('config.ini')
+        config_file = findfile('config.ini')
         if debug:
             print(config_file)
 
@@ -99,29 +202,39 @@ class Confluence(object):
                 url = config.get(profile, 'url')
                 username = config.get(profile, 'user')
                 password = config.get(profile, 'pass')
-                app_id = config.get(profile, 'app_id')
+                appid = config.get(profile, 'appid')
             else:
-                raise EnvironmentError(
-                    '%s was not able to locate the config.ini file.\n'
-                    'config.ini must be in current directory, user home directory or PYTHONPATH.'
-                    % __name__)
+                raise EnvironmentError("%s was not able to locate the config.ini file in current directory, user home directory or PYTHONPATH." % __name__)
 
         options = Confluence.DEFAULT_OPTIONS
-        options['base_url'] = url
+        options['server'] = url
         options['username'] = username
         options['password'] = password
 
-        self.connection = requests.Session()
-        self.connection.auth = HTTPBasicAuth(options['username'], options['password'])
-
         socket.setdefaulttimeout(120)  # without this there is no timeout, and this may block the requests
         # 60 - getPages() timeout one with this !
-        self._server = options['base_url'] + '/rest/api/'
+        self._server = xmlrpclib.ServerProxy(
+            options['server'] +
+            '/rpc/xmlrpc', allow_none=True)  # using Server or ServerProxy ?
+
+        # TODO: get rid of this split and just set self.server, self.token
+        self._token = self._server.confluence1.login(username, password)
+        try:
+            self._token2 = self._server.confluence2.login(username, password)
+        except xmlrpclib.Error:
+            self._token2 = None
+
+        # Set the base URL for REST calls.
+        self.base_url = url + '/rest/api/'
+
+        # Create a request session.
+        self.connection = requests.Session()
+        self.connection.auth = HTTPBasicAuth(self._user, self._password)
 
         if not self.connection_valid():
-            log.critical('Could not establish a valid connection. Check configuration.')
+            logging.critical('Connection is None.')
 
-        log.debug("Instantiated object.")
+        logging.debug("Instantiated Confluence object.")
 
     def connection_valid(self):
         """Checks if a connection to the Confluence server can be established.
@@ -129,15 +242,34 @@ class Confluence(object):
         :rtype: Boolean
         """
         try:
-            result = self.connection.get(self._server + 'content')
-        except requests.ConnectionError as err:
-            log.exception('Connection Error: Check username, password and url.')
+            result = self.connection.get(self.base_url + 'content')
+            result.raise_for_status()
+        except requests.exceptions.RequestException as err:
+            logging.exception('Connection Error: {}').format(err)
+            print(err)
+            raise err
+        except requests.exceptions.HTTPError as err:
+            print(err)
             raise err
 
         if not result.ok:
             self.connection = None
         return self.connection is not None
 
+    def get_spaces(self):
+        """Returns all spaces on the server.
+
+        :rtype: TODO @wowsuchnamaste insert rtype
+        """
+
+        request = self.base_url + 'space'
+        response = self.connection.get(request)
+        if not response.ok:
+            response = False
+
+        return response
+
+    @deprecate_xmlrpc_notification
     def getPage(self, page, space):
         """
         Returns a page object as a dictionary.
@@ -150,42 +282,13 @@ class Confluence(object):
 
         :return: dictionary. result['content'] contains the body of the page.
         """
-#        if self._token2:
-#            page = self._server.confluence2.getPage(self._token2, space, page)
-#        else:
-#            page = self._server.confluence1.getPage(self._token, space, page)
-#        return page
+        if self._token2:
+            page = self._server.confluence2.getPage(self._token2, space, page)
+        else:
+            page = self._server.confluence1.getPage(self._token, space, page)
+        return page
 
-    def get_page(self, page, space, limit=None):  # TODO: Finish method
-        """Returns a page as dict.
-
-        Returns a page object as a dictionary.
-
-        :param page: The page name
-        :type  page: ``str``
-
-        :param space: The space name
-        :type  space: ``str``
-
-        :param limit: Specify the number of pages to return. Defaults to Confluence's API default.
-        :type  limit: ``int``
-
-        :return: dictionary. result['content'] contains the body of the page.
-        """
-
-        request = self._server + 'content?title=' + page + '&spaceKey=' + space
-        # if limit:  # TODO: implement limit for this call
-        #     request = request + '?limit={}'.format(limit)
-        response = self.connection.get(request)
-        if not response.ok:
-            return None
-        try:
-            result = response.json()
-        except ValueError:
-            log.exception("Could not parse JSON data when calling method")
-
-        return result
-
+    @deprecate_xmlrpc_notification
     def getAttachments(self, page, space):
         """
         Returns a attachments as a dictionary.
@@ -198,21 +301,21 @@ class Confluence(object):
 
         :return: dictionary. result['content'] contains the body of the page.
         """
-#        if self._token2:
-#            server = self._server.confluence2
-#            token = self._token2
-#        else:
-#            server = self._server.confluence1
-#            token = self._token1
-#        existing_page = server.getPage(token, space, page)
-#        # try:
-#        #     attachments = server.getAttachments(token, existing_page["id"])
-#        # except xmlrpclib.Fault:
-#        #     logging.info("No existing attachment")
-#        #     attachments = None
-#        return attachments
-        pass
+        if self._token2:
+            server = self._server.confluence2
+            token = self._token2
+        else:
+            server = self._server.confluence1
+            token = self._token1
+        existing_page = server.getPage(token, space, page)
+        try:
+            attachments = server.getAttachments(token, existing_page["id"])
+        except xmlrpclib.Fault:
+            logging.info("No existing attachment")
+            attachments = None
+        return attachments
 
+    @deprecate_xmlrpc_notification
     def getAttachedFile(self, page, space, fileName):
         """
         Returns a attachment data as byte[].
@@ -226,21 +329,21 @@ class Confluence(object):
         :param fileName: The attached file name
         :type  fileName: ``str``
         """
-#        if self._token2:
-#            server = self._server.confluence2
-#            token = self._token2
-#        else:
-#            server = self._server.confluence1
-#            token = self._token1
-#        existing_page = server.getPage(token, space, page)
-#        # try:
-#        #     DATA = server.getAttachmentData(token, existing_page["id"], fileName, "0")
-#        # except xmlrpclib.Fault:
-#        #     logging.info("No existing attachment")
-#        #     DATA = None
-#        # return DATA
-        pass
+        if self._token2:
+            server = self._server.confluence2
+            token = self._token2
+        else:
+            server = self._server.confluence1
+            token = self._token1
+        existing_page = server.getPage(token, space, page)
+        try:
+            DATA = server.getAttachmentData(token, existing_page["id"], fileName, "0")
+        except xmlrpclib.Fault:
+            logging.info("No existing attachment")
+            DATA = None
+        return DATA
 
+    @deprecate_xmlrpc_notification
     def attachFile(self, page, space, files):
         """
         Attach (upload) a file to a page
@@ -254,7 +357,6 @@ class Confluence(object):
         :param files: The files to upload
         :type  files: ``dict`` where `key` is filename and `value` is the comment.
         """
-        """
         if self._token2:
             server = self._server.confluence2
             token = self._token2
@@ -263,10 +365,10 @@ class Confluence(object):
             token = self._token1
         existing_page = server.getPage(token, space, page)
         for filename in files.keys():
-            # try:
-            #     server.removeAttachment(token, existing_page["id"], filename)
-            # except xmlrpclib.Fault:
-            #     logging.info("No existing attachment to replace")
+            try:
+                server.removeAttachment(token, existing_page["id"], filename)
+            except xmlrpclib.Fault:
+                logging.info("No existing attachment to replace")
             content_types = {
                 "gif": "image/gif",
                 "png": "image/png",
@@ -277,19 +379,18 @@ class Confluence(object):
             extension = os.path.splitext(filename)[1:]
             ty = content_types.get(extension, "application/binary")
             attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
-            # f = open(filename, "rb")
-            # try:
-            #     byts = f.read()
-            #     logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
-            #     server.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
-            #     logging.info("done")
-            # except xmlrpclib.Error:
-            #     logging.exception("Unable to attach %s", filename)
-            # finally:
-            #     f.close()
-        """
-        pass
+            f = open(filename, "rb")
+            try:
+                byts = f.read()
+                logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
+                server.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
+                logging.info("done")
+            except xmlrpclib.Error:
+                logging.exception("Unable to attach %s", filename)
+            finally:
+                f.close()
 
+    @deprecate_xmlrpc_notification
     def getBlogEntries(self, space):
         """
         Returns a page object as a Vector.
@@ -297,26 +398,26 @@ class Confluence(object):
         :param space: The space name
         :type  space: ``str``
         """
-#        if self._token2:
-#            entries = self._server.confluence2.getBlogEntries(self._token2, space)
-#        else:
-#            entries = self._server.confluence1.getBlogEntries(self._token, space)
-#        return entries
-        pass
+        if self._token2:
+            entries = self._server.confluence2.getBlogEntries(self._token2, space)
+        else:
+            entries = self._server.confluence1.getBlogEntries(self._token, space)
+        return entries
 
+    @deprecate_xmlrpc_notification
     def getBlogEntry(self, pageId):
         """
         Returns a blog page as a BlogEntry object.
 
         :param pageId:
         """
-#        if self._token2:
-#            entry = self._server.confluence2.getBlogEntry(self._token2, pageId)
-#        else:
-#            entry = self._server.confluence1.getBlogEntries(self._token, pageId)
-#        return entry
-        pass
+        if self._token2:
+            entry = self._server.confluence2.getBlogEntry(self._token2, pageId)
+        else:
+            entry = self._server.confluence1.getBlogEntries(self._token, pageId)
+        return entry
 
+    @deprecate_xmlrpc_notification
     def storeBlogEntry(self, entry):
         """
         Store or update blog content.
@@ -328,13 +429,13 @@ class Confluence(object):
         :rtype: ``bool``
         :return: `true` if succeeded
         """
-#        if self._token2:
-#            blogEntry = self._server.confluence2.storeBlogEntry(self._token2, entry)
-#        else:
-#            blogEntry = self._server.confluence1.storeBlogEntry(self._token2, entry)
-#        return blogEntry
-        pass
+        if self._token2:
+            blogEntry = self._server.confluence2.storeBlogEntry(self._token2, entry)
+        else:
+            blogEntry = self._server.confluence1.storeBlogEntry(self._token2, entry)
+        return blogEntry
 
+    @deprecate_xmlrpc_notification
     def addLabelByName(self, labelName, objectId):
         """
         Adds label(s) to the object.
@@ -348,13 +449,13 @@ class Confluence(object):
         :rtype: ``bool``
         :return: True if succeeded
         """
-#        if self._token2:
-#            ret = self._server.confluence2.addLabelByName(self._token2, labelName, objectId)
-#        else:
-#            ret = self._server.confluence1.addLabelByName(self._token, labelName, objectId)
-#        return ret
-        pass
+        if self._token2:
+            ret = self._server.confluence2.addLabelByName(self._token2, labelName, objectId)
+        else:
+            ret = self._server.confluence1.addLabelByName(self._token, labelName, objectId)
+        return ret
 
+    @deprecate_xmlrpc_notification
     def getPageId(self, page, space):
         """
         Retuns the numeric id of a confluence page.
@@ -368,13 +469,13 @@ class Confluence(object):
         :rtype: ``int``
         :return: Page numeric id
         """
-#        if self._token2:
-#            page = self._server.confluence2.getPage(self._token2, space, page)
-#        else:
-#            page = self._server.confluence1.getPage(self._token, space, page)
-#        return page['id']
-        pass
+        if self._token2:
+            page = self._server.confluence2.getPage(self._token2, space, page)
+        else:
+            page = self._server.confluence1.getPage(self._token, space, page)
+        return page['id']
 
+    @deprecate_xmlrpc_notification
     def movePage(self, sourcePageIds, targetPageId, space, position='append'):
         """
         Moves sourcePage to be a child of targetPage by default.  Modify 'position' to either 'above' or 'below'
@@ -388,20 +489,20 @@ class Confluence(object):
                          to be a sibling of targetPageId of targetPageId instead
         """
 
-#        if not targetPageId.isdigit():
-#            targetPageId = self.getPageId(targetPageId, space)
-#        for sourcePageId in sourcePageIds:
-#            if not sourcePageId.isdigit():
-#                sourcePageId = self.getPageId(sourcePageId, space)
-#
-#            if self._token2:
-#                self._server.confluence2.movePage(self._token2,
-#                                                  str(sourcePageId), str(targetPageId), position)
-#            else:
-#                self._server.confluence1.movePage(self._token2,
-#                                                  str(sourcePageId), str(targetPageId), position)
-        pass
+        if not targetPageId.isdigit():
+            targetPageId = self.getPageId(targetPageId, space)
+        for sourcePageId in sourcePageIds:
+            if not sourcePageId.isdigit():
+                sourcePageId = self.getPageId(sourcePageId, space)
 
+            if self._token2:
+                self._server.confluence2.movePage(self._token2,
+                                                  str(sourcePageId), str(targetPageId), position)
+            else:
+                self._server.confluence1.movePage(self._token2,
+                                                  str(sourcePageId), str(targetPageId), position)
+
+    @deprecate_xmlrpc_notification
     def storePageContent(self, page, space, content, convert_wiki=True, parent_page=None):
         """
         Modifies the content of a Confluence page.
@@ -424,14 +525,14 @@ class Confluence(object):
         :rtype: ``bool``
         :return: `True` if succeeded
         """
-        """
+
         try:
             data = self.getPage(page, space)
-        # except xmlrpclib.Fault:
-        #     data = {
-        #         "space": space,
-        #         "title": page
-        #     }
+        except xmlrpclib.Fault:
+            data = {
+                "space": space,
+                "title": page
+            }
 
         data['content'] = content
 
@@ -446,9 +547,8 @@ class Confluence(object):
             return self._server.confluence2.storePage(self._token2, data)
         else:
             return self._server.confluence1.storePage(self._token, data)
-        """
-        pass
 
+    @deprecate_xmlrpc_notification
     def renderContent(self, space, page, a='', b={'style': 'clean'}):
         """
         Obtains the HTML content of a wiki page.
@@ -462,21 +562,21 @@ class Confluence(object):
         :return: string: HTML content
         """
 
-#        try:
-#            if not page.isdigit():
-#                page = self.getPageId(page=page, space=space)
-#            if self._token2:
-#                return self._server.confluence2.renderContent(self._token2, space, page, a, b)
-#            else:
-#                return self._server.confluence1.renderContent(self._token, space, page, a, b)
-#        except ssl.SSLError as err:
-#            logging.error("%s while retrieving page %s", err, page)
-#            return None
-        # except xmlrpclib.Fault as err:
-        #     logging.error("Failed call to renderContent('%s','%s') : %d : %s", space, page, err.faultCode, err.faultString)
-        #     raise err
-        pass
+        try:
+            if not page.isdigit():
+                page = self.getPageId(page=page, space=space)
+            if self._token2:
+                return self._server.confluence2.renderContent(self._token2, space, page, a, b)
+            else:
+                return self._server.confluence1.renderContent(self._token, space, page, a, b)
+        except ssl.SSLError as err:
+            logging.error("%s while retrieving page %s", err, page)
+            return None
+        except xmlrpclib.Fault as err:
+            logging.error("Failed call to renderContent('%s','%s') : %d : %s", space, page, err.faultCode, err.faultString)
+            raise err
 
+    @deprecate_xmlrpc_notification
     def convertWikiToStorageFormat(self, markup):
         """
         Converts a wiki text to it's XML/HTML format. Useful if you prefer to generate pages using wiki syntax instead of XML.
@@ -492,60 +592,16 @@ class Confluence(object):
         :rtype: ``str``
         :return: the text to store (HTML)
         """
-        # if self._token2:
-        #     return self._server.confluence2.convertWikiToStorageFormat(self._token2, markup)
-        # else:
-        #     return self._server.confluence.convertWikiToStorageFormat(self._token2, markup)
-        pass
+        if self._token2:
+            return self._server.confluence2.convertWikiToStorageFormat(self._token2, markup)
+        else:
+            return self._server.confluence.convertWikiToStorageFormat(self._token2, markup)
 
-    #  pending deprecation: use get_spaces() in the future
+    @deprecate_xmlrpc_notification
     def getSpaces(self):
-        function_name = str(sys._getframe().f_code.co_name) + '()'
-        log.warning("Deprecated: %s. Passing to new function, using default result limit.", function_name)
-        return self.get_spaces(results='clean')
+        return self._server.confluence2.getSpaces(self._token2)
 
-    def get_spaces(self, limit=None, results=None):
-        """Returns n spaces on the server as dictionary, where n is limit.
-
-        :param limit: Specify the number of spaces to return. Defaults to Confluence's API default.
-        :type  limit: ``int``
-
-        :param results: Optional specifier for result formatting. None or clean. 'clean' mimics old behavior.
-        :type  results: ``str``
-
-        :rtype: ``dict`` or None.
-        :return: List of spaces on the server up to limit, or None if the request fails.
-        """
-        request = self._server + 'space'
-        if limit:
-            request = request + '?limit={}'.format(limit)
-        response = self.connection.get(request)
-        if not response.ok:
-            status = response.status_code
-            log.debug("Response not okay: %s", status)
-            return None
-        try:
-            result = response.json()
-        except ValueError:
-            log.exception("Could not parse JSON data when calling get_soaces()")
-            return None
-
-        # Clean results mimics the old behavior (response from xmlrpc connection)
-        # This should probably be removed in future versions.
-        if str(results).lower() == 'clean':
-            clean_results = []
-            base_url = result['_links']['base'] + '/display/'
-            for entry in result['results']:
-                clean_results.append(
-                    {'key': entry['key'],
-                     'name': entry['name'],
-                     'type': entry['type'],
-                     'url': base_url + entry['key']})
-            log.debug("Spaces returned with clean results.")
-            return clean_results
-
-        return result
-
+    @deprecate_xmlrpc_notification
     def getPages(self, space):
         """
         Get pages in a space
@@ -556,13 +612,12 @@ class Confluence(object):
         :rtype: ``list``
         :return: a list of pages in a space
         """
-        # return self._server.confluence2.getPages(self._token2, space)
-        pass
+        return self._server.confluence2.getPages(self._token2, space)
 
+    @deprecate_xmlrpc_notification
     def getPagesWithErrors(self, stdout=True, caching=True):
         """
         Get pages with formatting errors
-        """
         """
         result = []
         cnt = 0
@@ -624,85 +679,3 @@ class Confluence(object):
             for x in stats:
                 print("'%s' : %s" % (x, stats[x]))
         return result
-        """
-        pass
-
-
-"""
-# TODO: replace all of these with object methods. Leaving for backwards compatibility for now
-def attach_file(server, token, space, title, files):
-    existing_page = server.confluence1.getPage(token, space, title)
-
-    for filename in files.keys():
-        try:
-            server.confluence1.removeAttachment(token, existing_page["id"], filename)
-        except Exception as e:
-            logging.exception("Skipping %s exception in removeAttachment" % e)
-        content_types = {
-            "gif": "image/gif",
-            "png": "image/png",
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-        }
-        extension = os.path.spl(filename)[1]
-        ty = content_types.get(extension, "application/binary")
-        attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
-        # f = open(filename, "rb")
-        # try:
-        #     byts = f.read()
-        #     logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
-        #     server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
-        #     logging.info("done")
-        # except Exception:
-        #     logging.exception("Unable to attach %s", filename)
-        # finally:
-        #     f.close()
-
-
-def remove_all_attachments(server, token, space, title):
-    existing_page = server.confluence1.getPage(token, space, title)
-
-    # Get a list of attachments
-    files = server.confluence1.getAttachments(token, existing_page["id"])
-
-    # Iterate through them all, removing each
-    numfiles = len(files)
-    i = 0
-    for f in files:
-        filename = f['fileName']
-        print("Removing %d of %d (%s)..." % (i, numfiles, filename))
-        server.confluence1.removeAttachment(token, existing_page["id"], filename)
-        i += 1
-
-
-def write_page(server, token, space, title, content, parent=None):
-    parent_id = None
-    if parent is not None:
-        try:
-            # Find out the ID of the parent page
-            parent_id = server.confluence1.getPage(token, space, parent)['id']
-            print("parent page id is %s" % parent_id)
-        except:
-            print("couldn't find parent page; ignoring error...")
-
-    try:
-        existing_page = server.confluence1.getPage(token, space, title)
-    except:
-        # In case it doesn't exist
-        existing_page = {"space": space, "title": title}
-
-    if parent_id is not None:
-        existing_page["parentId"] = parent_id
-
-    existing_page["content"] = content
-    existing_page = server.confluence1.storePage(token, existing_page)
-
-
-class WikiString(str):
-    pass
-
-
-class XMLString(str):
-    pass
-
-"""

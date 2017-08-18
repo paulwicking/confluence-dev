@@ -7,7 +7,7 @@ import warnings
 def test_valid_connection():
     """Checks that valid_connection() works and that it passes for the right reason."""
     conf = confluence.Confluence(url='http://127.0.0.1:1990/confluence', username='admin', password='admin')
-    url_to_get = conf._server + 'content'
+    url_to_get = conf.base_url + 'content'
     response = conf.connection.get(url_to_get)
 
     assert conf.connection_valid() is True
