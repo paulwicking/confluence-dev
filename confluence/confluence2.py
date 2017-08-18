@@ -133,7 +133,19 @@ class Confluence(object):
         # request = self.baseurl + 'content?title=' + page + '&spaceKey=' + space
         # print(f'DEBUG: {request}')
         # page = requests.get(request, self._auth)
-        pass
+
+        request = self._server + 'content?title=' + page + '&spaceKey=' + space
+        # if limit:  # TODO: implement limit for this call
+        #     request = request + '?limit={}'.format(limit)
+        response = self.connection.get(request)
+        if not response.ok:
+            return None
+        try:
+            result = response.json()
+        except ValueError:
+            logging.exception("Could not parse JSON data when calling method")
+
+        return result
 
 
 class ConfluenceOld(object):
