@@ -1,5 +1,4 @@
 language: python
-sudo: true
 matrix:
   fast_finish: false
 os:

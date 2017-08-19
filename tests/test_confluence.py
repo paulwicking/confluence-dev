@@ -16,6 +16,17 @@ def test_valid_connection():
     conf.connection.close()
 
 
+def test_get_page_id():
+    """Tests that page id is returned as expected."""
+    conf = confluence.Confluence(profile='general')
+    expected_response = 425986
+    response = conf.get_page_id('ds', 'Tell people what you think in a comment (step 8 of 9)')
+
+    assert response == expected_response
+    assert response != 42
+    assert isinstance(response, int)
+
+
 def test_invalid_connections_raise_exception():
     """Tests that invalid connections raise ConnectionError exception."""
     pass

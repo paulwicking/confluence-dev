@@ -230,11 +230,13 @@ class Confluence(object):
         try:
             result = self.connection.get(self.base_url + 'content')
             result.raise_for_status()
-        except requests.exceptions.RequestException as err:
-            logging.exception('Connection Error: {}').format(err)
+
+        except requests.exceptions.HTTPError as err:
             print(err)
             raise err
-        except requests.exceptions.HTTPError as err:
+
+        except requests.exceptions.RequestException as err:
+            logging.exception('Connection Error: {}').format(err)
             print(err)
             raise err
 
@@ -242,14 +244,14 @@ class Confluence(object):
             self.connection = None
         return self.connection is not None
 
-    def get_spaces(self):
+    def get_spaces(self, timeout=10):
         """Returns all spaces on the server.
 
         :rtype: TODO @wowsuchnamaste insert rtype
         """
 
         request = self.base_url + 'space'
-        response = self.connection.get(request)
+        response = self.connection.get(request, timeout=timeout)
         if not response.ok:
             response = False
 
@@ -273,6 +275,27 @@ class Confluence(object):
         else:
             page = self._server.confluence1.getPage(self._token, space, page)
         return page
+
+    def get_page(self, space, page, timeout=10):
+        request = self.base_url + 'content?&spaceKey={space}&title={page}'.format(
+            space=space, page=page
+        )
+
+        response = self.connection.get(request, timeout=timeout)
+        if not response.ok:
+            response = False
+
+        return response.json()
+
+    def get_pages(self, space, timeout=10):
+        request = self.base_url + 'content?type=page&spaceKey={space}'.format(
+            space=space
+        )
+        response = self.connection.get(request, timeout=timeout)
+        if not response.ok:
+            response = False
+
+        return response.json()['results']
 
     @deprecate_xmlrpc_notification
     def getAttachments(self, page, space):
@@ -460,6 +483,32 @@ class Confluence(object):
         else:
             page = self._server.confluence1.getPage(self._token, space, page)
         return page['id']
+
+    def get_page_id(self, space, page, timeout=10):
+        """
+        Returns the numeric id of a Confluence page.
+
+        :param space: The space name.
+        :type  space: ``str``
+
+        :param page: The page name.
+        :type  page: ``str``
+
+        :param timeout: Timeout in seconds.
+        :type  timeout: ``int``
+
+        :rtype ``int``
+        :return: Page numeric id.
+        """
+        request = self.base_url + 'content?type=page&spaceKey={space}&title={page}'.format(
+            space=space, page=page
+        )
+
+        response = self.connection.get(request, timeout=timeout)
+        if not response.ok:
+            response = False
+
+        return int(response.json()['results'][0]['id'])
 
     @deprecate_xmlrpc_notification
     def movePage(self, sourcePageIds, targetPageId, space, position='append'):
