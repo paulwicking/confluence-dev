@@ -114,17 +114,6 @@ def write_page(server, token, space, title, content, parent=None):
     existing_page = server.confluence1.storePage(token, existing_page)
 
 
-@deprecate_xmlrpc_notification
-class WikiString(str):
-    pass
-
-
-@deprecate_xmlrpc_notification
-class XMLString(str):
-    pass
-
-
-@deprecate_xmlrpc_notification
 class Confluence(object):
 
     DEFAULT_OPTIONS = {
@@ -169,22 +158,22 @@ class Confluence(object):
             pass=...
 
         """
-        def findfile(path):
+        def find_file(path):
             """
             Find the file named path in the sys.path.
             Returns the full path name if found, None if not found
             """
             paths = [os.getcwd(), '.', os.path.expanduser('~')]
             paths.extend(sys.path)
-            for dirname in paths:
-                possible = os.path.abspath(os.path.join(dirname, path))
+            for dir_name in paths:
+                possible = os.path.abspath(os.path.join(dir_name, path))
                 if os.path.isfile(possible):
                     return possible
             return None
 
         config = ConfigParser.SafeConfigParser(defaults={'user': username, 'pass': password, 'appid': appid})
 
-        config_file = findfile('config.ini')
+        config_file = find_file('config.ini')
         if debug:
             print(config_file)
 
@@ -218,18 +207,15 @@ class Confluence(object):
             '/rpc/xmlrpc', allow_none=True)  # using Server or ServerProxy ?
 
         # TODO: get rid of this split and just set self.server, self.token
-        self._token = self._server.confluence1.login(username, password)
-        try:
-            self._token2 = self._server.confluence2.login(username, password)
-        except xmlrpclib.Error:
-            self._token2 = None
+        self._token = None
+        self._token2 = None
 
         # Set the base URL for REST calls.
         self.base_url = url + '/rest/api/'
 
         # Create a request session.
         self.connection = requests.Session()
-        self.connection.auth = HTTPBasicAuth(self._user, self._password)
+        self.connection.auth = HTTPBasicAuth(options['username'], options['password'])
 
         if not self.connection_valid():
             logging.critical('Connection is None.')
@@ -267,7 +253,7 @@ class Confluence(object):
         if not response.ok:
             response = False
 
-        return response
+        return response.json()
 
     @deprecate_xmlrpc_notification
     def getPage(self, page, space):
@@ -599,7 +585,8 @@ class Confluence(object):
 
     @deprecate_xmlrpc_notification
     def getSpaces(self):
-        return self._server.confluence2.getSpaces(self._token2)
+        # return self._server.confluence2.getSpaces(self._token2)
+        return self.get_spaces()
 
     @deprecate_xmlrpc_notification
     def getPages(self, space):

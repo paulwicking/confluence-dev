@@ -20,3 +20,6 @@ coverage.xml
 confluence-dev.ipynb
 .ipynb_checkpoints/
 confluence-test.ini
+confluence/confluence2_new.py
+amps-standalone-confluence-5.9.14/
+config.ini
