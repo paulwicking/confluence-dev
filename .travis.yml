@@ -4,9 +4,6 @@ matrix:
   fast_finish: false
 os:
 - linux
-cache:
-  directories:
-  - "$HOME/amps-standalone-confluence-5.9.14"
 python:
 - '2.7'
 - '3.4'
@@ -15,22 +12,12 @@ python:
 before_install:
 - openssl aes-256-cbc -K $encrypted_040939d57a62_key -iv $encrypted_040939d57a62_iv
   -in config.ini.enc -out config.ini -d
-# - echo "deb https://sdkrepo.atlassian.com/debian/ stable contrib" | sudo tee -a /etc/apt/sources.list
-# - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys B07804338C015B73
-# - sudo apt-get update -qq
 install:
-# - sudo apt-get install apt-transport-https
-# - sudo apt-get install atlassian-plugin-sdk
 - pip -q --log dist/pip.log install --upgrade pip setuptools tox-travis py wheel
 - python setup.py sdist bdist_wheel install
 - pip install ./dist/*.whl
 - pip --version
-before_script:
-# - openssl aes-256-cbc -K $encrypted_dd6be8d5aca8_key -iv $encrypted_dd6be8d5aca8_iv
-#   -in confluence-test.ini.enc -out confluence-test.ini -d
-# - atlas-run-standalone -q -B -DskipAllPrompts=true --product confluence --version
-#   5.9.14 </dev/zero 2>&1 &
-# - sleep 300
+before_script: 
 script:
 - export PACKAGE_NAME=$(python setup.py --name)
 - export PACKAGE_VERSION=$(python setup.py --version)
