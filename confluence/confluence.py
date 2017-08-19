@@ -176,11 +176,6 @@ class Confluence(object):
             result = self.connection.get(self.base_url + 'content')
             result.raise_for_status()
 
-        except requests.exceptions.HTTPError as err:
-            logging.exception('Connection Error: {}').format(err)
-            print(err)
-            raise err
-
         except requests.exceptions.RequestException as err:
             logging.exception('Connection Error: {}').format(err)
             print(err)
@@ -760,74 +755,71 @@ class Confluence(object):
                 print("'%s' : %s" % (x, stats[x]))
         return result
 
-
-# TODO: replace all of these with object methods. Leaving for backwards compatibility for now
-@deprecate_xmlrpc_notification
-def attach_file(server, token, space, title, files):
-    existing_page = server.confluence1.getPage(token, space, title)
-
-    for filename in files.keys():
-        try:
-            server.confluence1.removeAttachment(token, existing_page["id"], filename)
-        except Exception as e:
-            logging.exception("Skipping %s exception in removeAttachment" % e)
-        content_types = {
-            "gif": "image/gif",
-            "png": "image/png",
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-        }
-        extension = os.path.spl(filename)[1]
-        ty = content_types.get(extension, "application/binary")
-        attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
-        f = open(filename, "rb")
-        try:
-            byts = f.read()
-            logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
-            server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
-            logging.info("done")
-        except Exception:
-            logging.exception("Unable to attach %s", filename)
-        finally:
-            f.close()
-
-
-@deprecate_xmlrpc_notification
-def remove_all_attachments(server, token, space, title):
-    existing_page = server.confluence1.getPage(token, space, title)
-
-    # Get a list of attachments
-    files = server.confluence1.getAttachments(token, existing_page["id"])
-
-    # Iterate through them all, removing each
-    numfiles = len(files)
-    i = 0
-    for f in files:
-        filename = f['fileName']
-        print("Removing %d of %d (%s)..." % (i, numfiles, filename))
-        server.confluence1.removeAttachment(token, existing_page["id"], filename)
-        i += 1
-
-
-@deprecate_xmlrpc_notification
-def write_page(server, token, space, title, content, parent=None):
-    parent_id = None
-    if parent is not None:
-        try:
-            # Find out the ID of the parent page
-            parent_id = server.confluence1.getPage(token, space, parent)['id']
-            print("parent page id is %s" % parent_id)
-        except:
-            print("couldn't find parent page; ignoring error...")
-
-    try:
+    # TODO: replace all of these with object methods. Leaving for backwards compatibility for now
+    @deprecate_xmlrpc_notification
+    def attach_file(self, server, token, space, title, files):
         existing_page = server.confluence1.getPage(token, space, title)
-    except:
-        # In case it doesn't exist
-        existing_page = {"space": space, "title": title}
 
-    if parent_id is not None:
-        existing_page["parentId"] = parent_id
+        for filename in files.keys():
+            try:
+                server.confluence1.removeAttachment(token, existing_page["id"], filename)
+            except Exception as e:
+                logging.exception("Skipping %s exception in removeAttachment" % e)
+            content_types = {
+                "gif": "image/gif",
+                "png": "image/png",
+                "jpg": "image/jpeg",
+                "jpeg": "image/jpeg",
+            }
+            extension = os.path.spl(filename)[1]
+            ty = content_types.get(extension, "application/binary")
+            attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
+            f = open(filename, "rb")
+            try:
+                byts = f.read()
+                logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
+                server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
+                logging.info("done")
+            except Exception:
+                logging.exception("Unable to attach %s", filename)
+            finally:
+                f.close()
 
-    existing_page["content"] = content
-    existing_page = server.confluence1.storePage(token, existing_page)
+    @deprecate_xmlrpc_notification
+    def remove_all_attachments(server, token, space, title):
+        existing_page = server.confluence1.getPage(token, space, title)
+
+        # Get a list of attachments
+        files = server.confluence1.getAttachments(token, existing_page["id"])
+
+        # Iterate through them all, removing each
+        numfiles = len(files)
+        i = 0
+        for f in files:
+            filename = f['fileName']
+            print("Removing %d of %d (%s)..." % (i, numfiles, filename))
+            server.confluence1.removeAttachment(token, existing_page["id"], filename)
+            i += 1
+
+    @deprecate_xmlrpc_notification
+    def write_page(server, token, space, title, content, parent=None):
+        parent_id = None
+        if parent is not None:
+            try:
+                # Find out the ID of the parent page
+                parent_id = server.confluence1.getPage(token, space, parent)['id']
+                print("parent page id is %s" % parent_id)
+            except:
+                print("couldn't find parent page; ignoring error...")
+
+        try:
+            existing_page = server.confluence1.getPage(token, space, title)
+        except:
+            # In case it doesn't exist
+            existing_page = {"space": space, "title": title}
+
+        if parent_id is not None:
+            existing_page["parentId"] = parent_id
+
+        existing_page["content"] = content
+        existing_page = server.confluence1.storePage(token, existing_page)
