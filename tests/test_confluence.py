@@ -16,6 +16,11 @@ def test_valid_connection():
     conf.connection.close()
 
 
+def test_invalid_connections_raise_exception():
+    """Tests that invalid connections raise ConnectionError exception."""
+    pass
+
+
 def test_check_response():
     """"Tests that valid responses return True, invalid responses False."""
     conf = confluence.Confluence(profile='pycontribs-test')
@@ -32,19 +37,6 @@ def test_check_response():
     conf.connection.close()
 
 
-def test_get_page_id():
-    """Tests that page id is returned as expected."""
-    conf = confluence.Confluence(profile='pycontribs-test')
-    expected_response = 425986
-    response = conf.get_page_id('ds', 'Tell people what you think in a comment (step 8 of 9)')
-
-    assert response == expected_response
-    assert response != 42
-    assert isinstance(response, int)
-
-    conf.connection.close()
-
-
 def test_pending_deprecation_warnings():
     with warnings.catch_warnings(record=True) as warn:
         warnings.simplefilter('always')
@@ -57,8 +49,28 @@ def test_pending_deprecation_warnings():
     conf.connection.close()
 
 
+def test_get_page_id():
+    """Tests that page id is returned as expected."""
+    conf = confluence.Confluence(profile='pycontribs-test')
+    expected_response = 425986
+    response = conf.get_page_id('ds', 'Tell people what you think in a comment (step 8 of 9)')
+
+    expected_blog_response = 60325915
+    blog_response = conf.get_page_id('wst', 'The Camelot Song', content_type='blogpost')
+
+    assert isinstance(response, int)
+    assert response == expected_response
+    assert response != 42
+
+    assert isinstance(blog_response, int)
+    assert blog_response == expected_blog_response
+    assert blog_response != 42
+
+    conf.connection.close()
+
+
 def test_get_spaces():
-    """Test to make sure we can get a list of spaces from the server."""
+    """Test retrieval of a list of spaces from the server."""
     conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_spaces()
 
@@ -68,16 +80,36 @@ def test_get_spaces():
     conf.connection.close()
 
 
-def test_get_pages():
-    """Test that we get the pages in a space from the server."""
-    pass
+def test_get_blog_entry():
+    conf = confluence.Confluence(profile='pycontribs-test')
+    result = conf.get_blog_entry('wst', 'The Camelot Song', post_date='2017-08-19')
+
+    assert 'The Camelot Song' in result['results'][0]['title']
+    assert 'blogpost' in result['results'][0]['type']
+    assert 'Clark Gable' in result['results'][0]['body']['view']['value']
+    assert 'elderberries' not in result['results'][0]['title']
+
+    conf.connection.close()
 
 
 def test_get_page():
     """Test that we can retrieve one specific page."""
-    pass
+    conf = confluence.Confluence(profile='pycontribs-test')
+    result = conf.get_page('ds', 'Get serious with a table (step 5 of 9)')
+
+    assert 'page' in result['results'][0]['type']
+    assert 'Get serious with a table' in result['results'][0]['title']
+    assert 'elderberries' not in result['results'][0]['body']['storage']['value']
+    assert 'Your table should look like this:' in result['results'][0]['body']['storage']['value']
+
+    conf.connection.close()
 
 
-def test_invalid_connections_raise_exception():
-    """Tests that invalid connections raise ConnectionError exception."""
-    pass
+def test_get_pages():
+    """Test that we get the pages in a space from the server."""
+    conf = confluence.Confluence(profile='pycontribs-test')
+    result = conf.get_pages('ds')
+
+    assert len(result) == 10
+
+    conf.connection.close()
