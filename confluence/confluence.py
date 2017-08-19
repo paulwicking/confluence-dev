@@ -354,9 +354,15 @@ class Confluence(object):
         return self.get_spaces()
 
     def get_spaces(self, limit=None, timeout=10):
-        """Returns all spaces on the server.
+        """Get a dictionary of all spaces on the server.
 
-        :rtype: TODO @wowsuchnamaste insert rtype
+        :param limit: The maximum number of pages returned.
+        :type  limit: ``int``
+
+        :param timeout: Timeout in seconds
+        :type  timeout: ``int`` or ``float``
+
+        :rtype: ``dict``
         """
         request = self.base_url + 'space'
         if limit:
@@ -383,7 +389,22 @@ class Confluence(object):
         return entry
 
     def get_blog_entry(self, space, title, post_date, timeout=10):
-        """Returns a blog page as a ."""
+        """Get a blog page from the server.
+
+        :param space: The space containing the blog.
+        :type  space: ``str``
+
+        :param title: The blog title.
+        :type  title: ``str``
+
+        :param post_date: The date the blog was posted.
+        :type  post_date: ``str`` in date format: 1970-01-31
+
+        :param timeout: Timeout in seconds.
+        :type  timeout: ``int`` or ``float`
+
+        :rtype: ``dict``
+        """
         request = self.base_url + 'content?type=blogpost&spaceKey={space}' \
                                   '&title={title}&postingDay={post_date}' \
                                   '&expand=space,body.view,version,container'\
