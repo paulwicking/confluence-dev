@@ -25,6 +25,17 @@ try:
 except ImportError:
     import configparser as ConfigParser
 
+try:  # Python 2.7+
+    from logging import NullHandler
+except ImportError:
+    class NullHandler(logging.Handler):
+        """Returns a new instance of the NullHandler class."""
+        def emit(self, record):
+            """This method does nothing."""
+            pass
+
+logging.getLogger('confluence').addHandler(NullHandler())
+
 
 def deprecate_xmlrpc_notification(func):
     """Decorator for xmlrpc deprecation warnings."""
@@ -199,6 +210,8 @@ class Confluence(object):
         options['server'] = url
         options['username'] = username
         options['password'] = password
+
+        self.logging = logging
 
         socket.setdefaulttimeout(120)  # without this there is no timeout, and this may block the requests
         # 60 - getPages() timeout one with this !
