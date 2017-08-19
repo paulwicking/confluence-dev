@@ -30,6 +30,7 @@ try:  # Python 2.7+
 except ImportError:
     class NullHandler(logging.Handler):
         """Returns a new instance of the NullHandler class."""
+
         def emit(self, record):
             """This method does nothing."""
             pass
@@ -50,6 +51,7 @@ def deprecate_xmlrpc_notification(func):
             stacklevel=2)
         warnings.simplefilter('default', PendingDeprecationWarning)
         return func(*args, **kwargs)
+
     return new_func
 
 
@@ -126,13 +128,12 @@ def write_page(server, token, space, title, content, parent=None):
 
 
 class Confluence(object):
-
     DEFAULT_OPTIONS = {
         "server": "http://localhost:8090",
         "verify": True
     }
 
-    def __init__(self, profile=None, url="http://localhost:8090/", username=None, password=None, appid=None, debug=False):
+    def __init__(self, profile=None, url="http://localhost:8090/", username=None, password=None, appid=None):
         """
         Returns a Confluence object by loading the connection details from the `config.ini` file.
 
@@ -169,6 +170,7 @@ class Confluence(object):
             pass=...
 
         """
+
         def find_file(path):
             """
             Find the file named path in the sys.path.
@@ -204,7 +206,8 @@ class Confluence(object):
                 password = config.get(profile, 'pass')
                 appid = config.get(profile, 'appid')
             else:
-                raise EnvironmentError("%s was not able to locate the config.ini file in current directory, user home directory or PYTHONPATH." % __name__)
+                raise EnvironmentError(
+                    "%s was not able to locate the config.ini file in current directory, user home directory or PYTHONPATH." % __name__)
 
         options = Confluence.DEFAULT_OPTIONS
         options['server'] = url
@@ -257,18 +260,48 @@ class Confluence(object):
             self.connection = None
         return self.connection is not None
 
-    def get_spaces(self, timeout=10):
+    def check_response(self, response):
+        """Checks if the response from REST calls is valid.
+
+        :rtype Boolean.
+        """
+
+        if not response:
+            logging.debug('Retrieved a NoneObject')
+            response = None
+
+        elif not response.ok:
+            logging.debug('Response not ok:\n'
+                          'Reason: %s: %s\n'
+                          'Request: %s'.format(response.status_code, response.reason, response.request.url)
+                          )
+            response = None
+        else:
+            try:
+                len(response.json()['results'][0]) < 1
+            except IndexError:  # exception caused by lists of 0 length
+                logging.debug('Retrieved an empty list:\n'
+                              'Request: {}'.format(response.request.url))
+                response = None
+
+        return response is not None
+
+    def get_spaces(self, limit=None, timeout=10):
         """Returns all spaces on the server.
 
         :rtype: TODO @wowsuchnamaste insert rtype
         """
 
         request = self.base_url + 'space'
+        if limit:
+            request = request + '&limit={limit}'.format(limit=limit)
         response = self.connection.get(request, timeout=timeout)
-        if not response.ok:
-            response = False
+        if not self.check_response(response):
+            response = None
+        else:
+            response = response.json()
 
-        return response.json()
+        return response
 
     @deprecate_xmlrpc_notification
     def getPage(self, page, space):
@@ -290,25 +323,45 @@ class Confluence(object):
         return page
 
     def get_page(self, space, page, timeout=10):
-        request = self.base_url + 'content?&spaceKey={space}&title={page}'.format(
+        request = self.base_url + 'content?&spaceKey={space}&title={page}&expand=body.storage'.format(
             space=space, page=page
         )
 
         response = self.connection.get(request, timeout=timeout)
         if not response.ok:
             response = False
+        else:
+            response = response.json()
 
-        return response.json()
+        return response
 
-    def get_pages(self, space, timeout=10):
+    def get_pages(self, space, limit=None, timeout=10):
+        """
+        Gets all pages in a space. Returns full REST response as JSON object.
+
+        :param space: The space name.
+        :type  space: ``str``
+
+        :param limit: The maximum number of pages returned.
+        :type  limit: ``int``
+
+        :param timeout: Timeout in seconds
+        :type  timeout: ``int`` or ``float``
+
+        :return:
+        """
         request = self.base_url + 'content?type=page&spaceKey={space}'.format(
             space=space
         )
+        if limit:
+            request = request + '&limit={limit}'.format(limit=limit)
         response = self.connection.get(request, timeout=timeout)
         if not response.ok:
             response = False
+        else:
+            response = response.json()['results']
 
-        return response.json()['results']
+        return response
 
     @deprecate_xmlrpc_notification
     def getAttachments(self, page, space):
@@ -491,11 +544,8 @@ class Confluence(object):
         :rtype: ``int``
         :return: Page numeric id
         """
-        if self._token2:
-            page = self._server.confluence2.getPage(self._token2, space, page)
-        else:
-            page = self._server.confluence1.getPage(self._token, space, page)
-        return page['id']
+        logging.debug('Call to deprecated method, returning new method.')
+        return self.get_page_id(space, page)
 
     def get_page_id(self, space, page, timeout=10):
         """
@@ -508,20 +558,23 @@ class Confluence(object):
         :type  page: ``str``
 
         :param timeout: Timeout in seconds.
-        :type  timeout: ``int``
+        :type  timeout: ``int`` or ``float``
 
         :rtype ``int``
-        :return: Page numeric id.
+        :return: Page numeric id, or None if lookup fails.
         """
         request = self.base_url + 'content?type=page&spaceKey={space}&title={page}'.format(
             space=space, page=page
         )
 
         response = self.connection.get(request, timeout=timeout)
-        if not response.ok:
-            response = False
 
-        return int(response.json()['results'][0]['id'])
+        if not self.check_response(response):
+            response = None
+        else:
+            response = int(response.json()['results'][0]['id'])
+
+        return response
 
     @deprecate_xmlrpc_notification
     def movePage(self, sourcePageIds, targetPageId, space, position='append'):
@@ -621,7 +674,8 @@ class Confluence(object):
             logging.error("%s while retrieving page %s", err, page)
             return None
         except xmlrpclib.Fault as err:
-            logging.error("Failed call to renderContent('%s','%s') : %d : %s", space, page, err.faultCode, err.faultString)
+            logging.error("Failed call to renderContent('%s','%s') : %d : %s", space, page, err.faultCode,
+                          err.faultString)
             raise err
 
     @deprecate_xmlrpc_notification
@@ -647,7 +701,7 @@ class Confluence(object):
 
     @deprecate_xmlrpc_notification
     def getSpaces(self):
-        # return self._server.confluence2.getSpaces(self._token2)
+        logging.debug('Call to deprecated method, returning new method.')
         return self.get_spaces()
 
     @deprecate_xmlrpc_notification

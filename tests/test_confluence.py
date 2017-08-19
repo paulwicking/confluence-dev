@@ -16,6 +16,22 @@ def test_valid_connection():
     conf.connection.close()
 
 
+def test_check_response():
+    """"Tests that valid responses return True, invalid responses False."""
+    conf = confluence.Confluence(profile='pycontribs-test')
+    call_that_causes_404 = conf.connection.get(conf.base_url +
+                                               'space/content?type=page&spaceKey=ds')
+    call_that_returns_empty_results_list = conf.get_page_id('ds', 'another page')
+    call_that_succeeds = conf.connection.get(conf.base_url +
+                                             'content?type=page&spaceKey=ds')
+
+    assert conf.check_response(call_that_causes_404) is False
+    assert conf.check_response(call_that_returns_empty_results_list) is False
+    assert conf.check_response(call_that_succeeds) is True
+
+    conf.connection.close()
+
+
 def test_get_page_id():
     """Tests that page id is returned as expected."""
     conf = confluence.Confluence(profile='pycontribs-test')
@@ -25,6 +41,8 @@ def test_get_page_id():
     assert response == expected_response
     assert response != 42
     assert isinstance(response, int)
+
+    conf.connection.close()
 
 
 def test_pending_deprecation_warnings():
