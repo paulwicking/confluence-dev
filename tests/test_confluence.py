@@ -5,7 +5,7 @@ import warnings
 
 def test_valid_connection():
     """Checks that valid_connection() works and that it passes for the right reason."""
-    conf = confluence.Confluence(profile='general')
+    conf = confluence.Confluence(profile='pycontribs-test')
     url_to_get = conf.base_url + 'content'
     response = conf.connection.get(url_to_get)
 
@@ -18,7 +18,7 @@ def test_valid_connection():
 
 def test_get_page_id():
     """Tests that page id is returned as expected."""
-    conf = confluence.Confluence(profile='general')
+    conf = confluence.Confluence(profile='pycontribs-test')
     expected_response = 425986
     response = conf.get_page_id('ds', 'Tell people what you think in a comment (step 8 of 9)')
 
@@ -27,30 +27,10 @@ def test_get_page_id():
     assert isinstance(response, int)
 
 
-def test_invalid_connections_raise_exception():
-    """Tests that invalid connections raise ConnectionError exception."""
-    pass
-
-
-# @pytest.mark.xfail
-# def test_connection_to_atlassian_sdk():
-#     """Test that we can connect to the Atlassian SDK during test"""
-#     conf = confluence.Confluence(profile='atlassian-sdk')
-#     result = conf.getSpaces()
-#
-#     assert isinstance(conf, object)
-#     assert not isinstance(conf, int)
-#     assert 'key' in result[0]
-#     assert result[0]['name'] == 'Demonstration Space'
-#     assert 'pink fluffy unicorns' not in result[0]
-#
-#     conf.connection.close()
-
-
 def test_pending_deprecation_warnings():
     with warnings.catch_warnings(record=True) as warn:
         warnings.simplefilter('always')
-        conf = confluence.Confluence(profile='general')
+        conf = confluence.Confluence(profile='pycontribs-test')
         conf.getSpaces()
 
         assert issubclass(warn[-1].category, PendingDeprecationWarning)
@@ -61,7 +41,7 @@ def test_pending_deprecation_warnings():
 
 def test_get_spaces():
     """Test to make sure we can get a list of spaces from the server."""
-    conf = confluence.Confluence(profile='general')
+    conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_spaces()
 
     assert 'Demonstration Space' in result['results'][0]['name']
@@ -77,4 +57,9 @@ def test_get_pages():
 
 def test_get_page():
     """Test that we can retrieve one specific page."""
+    pass
+
+
+def test_invalid_connections_raise_exception():
+    """Tests that invalid connections raise ConnectionError exception."""
     pass
