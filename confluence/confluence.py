@@ -182,11 +182,11 @@ class Confluence(object):
                     return possible
             return None
 
-        config = ConfigParser.SafeConfigParser(defaults={'user': username, 'pass': password, 'appid': appid})
+        config = ConfigParser.ConfigParser(defaults={'user': username, 'pass': password, 'appid': appid})
 
         config_file = find_file('config.ini')
-        if debug:
-            print(config_file)
+        if config_file:
+            logging.debug("Found %s config file" % config_file)
 
         if not profile:
             if config_file:
