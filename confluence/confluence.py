@@ -346,29 +346,50 @@ class Confluence(object):
     @deprecate_xmlrpc_notification
     def getSpaces(self):
         logging.debug('Call to deprecated method, returning new method.')
-        return self.get_spaces()
+        return self.get_spaces(limit=1000)
 
-    def get_spaces(self, limit=None, timeout=10):
-        """Get a dictionary of all spaces on the server.
+    def get_spaces(self, limit=None, full=False, timeout=10):
+        """Get all spaces on the server.
 
         :param limit: The maximum number of pages returned.
+                        Default is None, and gets the server default limit.
         :type  limit: ``int``
+
+        :param full: Return pretty results or full JSON response.
+        :type  full: ``bool``
 
         :param timeout: Timeout in seconds
         :type  timeout: ``int`` or ``float``
 
-        :rtype: ``dict``
+        :rtype:
+                full=False: ``list``
+                full=True: ``dict``
         """
         request = self.base_url + 'space'
         if limit:
             request = request + '&limit={limit}'.format(limit=limit)
         response = self.connection.get(request, timeout=timeout)
         if not self.check_response(response):
+            logging.debug('Response check failed, returning None')
             response = None
+            return response
         else:
             response = response.json()
 
-        return response
+        if full:
+            logging.info('Returning full JSON response.')
+            return response
+
+        base_url = response['_links']['base'] + '/display/'
+        clean_results = [
+            {'key': entry['key'],
+             'name': entry['name'],
+             'type': entry['type'],
+             'url': base_url + entry['key']}
+            for entry in response['results']]
+        logging.info('Returning pretty response.')
+
+        return clean_results
 
     @deprecate_xmlrpc_notification
     def getBlogEntry(self, pageId):

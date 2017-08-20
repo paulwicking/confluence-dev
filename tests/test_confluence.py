@@ -18,6 +18,7 @@ def test_valid_connection():
 
 def test_invalid_connections_raise_exception():
     """Tests that invalid connections raise ConnectionError exception."""
+    #  TODO write this test.
     pass
 
 
@@ -69,13 +70,24 @@ def test_get_page_id():
     conf.connection.close()
 
 
-def test_get_spaces():
+def test_get_spaces_with_full_json_response():
+    """Test retrieval of a JSON formatted dict of spaces from the server."""
+    conf = confluence.Confluence(profile='pycontribs-test')
+    result = conf.get_spaces(full=True)
+
+    assert 'Demonstration Space' in result['results'][0]['name']
+    assert 'elderberries' not in result['results'][0]['name']
+
+    conf.connection.close()
+
+
+def test_get_spaces_with_pretty_response():
     """Test retrieval of a list of spaces from the server."""
     conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_spaces()
 
-    assert 'Demonstration Space' in result['results'][0]['name']
-    assert 'elderberries' not in result['results'][0]['name']
+    assert 'Demonstration Space' in result[0]['name']
+    assert 'elderberries' not in result[0]['name']
 
     conf.connection.close()
 
