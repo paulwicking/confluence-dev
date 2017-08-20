@@ -455,7 +455,7 @@ class Confluence(object):
             entry = self._server.confluence1.getBlogEntries(self._token, pageId)
         return entry
 
-    def get_blog_entry(self, space, title, post_date, timeout=10):
+    def get_blog_entry(self, space, title, post_date, full=False, timeout=10):
         """Get a blog page from the server.
 
         :param space: The space containing the blog.
@@ -478,9 +478,28 @@ class Confluence(object):
             .format(space=space, title=title, post_date=post_date)
         response = self.connection.get(request, timeout=timeout)
         if not self.check_response(response):
+            logging.debug('Response check failed, returning None')
             response = None
+            return response
         else:
             response = response.json()
+
+        if full:
+            logging.info('Returning full JSON response.')
+            return response
+
+        base_url = response['_links']['base']
+        response = response['results'][0]
+        clean_results = {
+            'author': response.get('history').get('createdBy').get('username'),
+            'content': response.get('body').get('storage').get('value'),
+            'id': response.get('id'),
+            'created': response.get('history').get('createdDate'),
+            'space': space,
+            'title': response.get('title'),
+            'url': base_url + response.get('_links').get('webui'),
+            'version': str(response.get('version').get('number'))
+        }
 
         # TODO: Add pretty response:
         # {'author': 'wowsuchnamaste',
@@ -489,12 +508,13 @@ class Confluence(object):
         #  'id': '1179661',
         #  'permissions': '0',
         #  'publishDate': < DateTime '20170321T10:31:16' at 0x7fe1eff45198 >,
-        # 'space': '~wowsuchnamaste',
-        # 'title': 'This is my first blog post.',
-        # 'url': 'https://wowsu.ch/confluence/pages/viewpage.action?pageId=1179661',
-        # 'version': '2'}
+        #  'space': '~wowsuchnamaste',
+        #  'title': 'This is my first blog post.',
+        #  'url': 'https://wowsu.ch/confluence/pages/viewpage.action?pageId=1179661',
+        #  'version': '2'}
 
-        return response
+        logging.info('Returning pretty response.')
+        return clean_results
 
     @deprecate_xmlrpc_notification
     def getBlogEntries(self, space):
@@ -509,6 +529,22 @@ class Confluence(object):
         else:
             entries = self._server.confluence1.getBlogEntries(self._token, space)
         return entries
+
+    def get_blog_entries(self, space, full=False, timeout=10):
+        """Get a list of blogposts in a space.
+
+        :param space: The space name
+        :type  space: ``str``
+
+        :param full: Return pretty results or full JSON response.
+        :type  full: ``bool``
+
+        :param timeout: Timeout in seconds
+        :type  timeout: ``int`` or ``float``
+
+        :rtype: TODO missing rtype.
+        """
+        pass
 
     @deprecate_xmlrpc_notification
     def getAttachments(self, page, space):

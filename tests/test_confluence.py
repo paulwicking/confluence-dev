@@ -94,9 +94,9 @@ def test_get_spaces_with_pretty_response():
     conf.connection.close()
 
 
-def test_get_blog_entry():
+def test_get_blog_entry_with_full_json_response():
     conf = confluence.Confluence(profile='pycontribs-test')
-    result = conf.get_blog_entry('wst', 'The Camelot Song', post_date='2017-08-19')
+    result = conf.get_blog_entry('wst', 'The Camelot Song', post_date='2017-08-19', full=True)
 
     assert 'The Camelot Song' in result['results'][0]['title']
     assert 'blogpost' in result['results'][0]['type']
