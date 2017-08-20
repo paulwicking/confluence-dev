@@ -224,25 +224,6 @@ class Confluence(object):
 
         return response['username']
 
-    @deprecate_xmlrpc_notification
-    def getPage(self, page, space):
-        """
-        Returns a page object as a dictionary.
-
-        :param page: The page name
-        :type  page: ``str``
-
-        :param space: The space name
-        :type  space: ``str``
-
-        :return: dictionary. result['content'] contains the body of the page.
-        """
-        if self._token2:
-            page = self._server.confluence2.getPage(self._token2, space, page)
-        else:
-            page = self._server.confluence1.getPage(self._token, space, page)
-        return page
-
     def get_page(self, space, page, full=False, timeout=10):
         """Returns a page object as a dictionary.
 
@@ -291,24 +272,19 @@ class Confluence(object):
             'title': response.get('title'),
             'url': base_url + response.get('_links').get('webui'),
             'version': str(response.get('version').get('number'))
-             }
-        # for entry in response['results']]
+        }
 
         logging.info('Returning pretty response.')
         return clean_results
 
     @deprecate_xmlrpc_notification
-    def getPages(self, space):
-        """
-        Get pages in a space
+    def getPage(self, page, space):
+        """Deprecated method. Use get_page()
 
-        :param space: The space name
-        :type  space: ``str``
-
-        :rtype: ``list``
-        :return: a list of pages in a space
+        :returns new method, get_page().
         """
-        return self._server.confluence2.getPages(self._token2, space)
+        logging.info('Call to deprecated method, returning new method.')
+        return self.get_page(space, page)
 
     def get_pages(self, space, limit=None, full=False, timeout=10):
         """
@@ -360,20 +336,21 @@ class Confluence(object):
         return clean_results
 
     @deprecate_xmlrpc_notification
+    def getPages(self, space):
+        """Deprecated method. Use get_pages().
+
+        :return: New method: get_pages().
+        """
+        logging.info('Call to deprecated method, returning new method.')
+        return self.get_pages(space)
+
+    @deprecate_xmlrpc_notification
     def getPageId(self, page, space):
+        """Deprecated method. Use get_page_id()
+
+        :returns new method: get_page_id()
         """
-        Retuns the numeric id of a confluence page.
-
-        :param page: The page name
-        :type  page: ``str``
-
-        :param space: The space name
-        :type  space: ``str``
-
-        :rtype: ``int``
-        :return: Page numeric id
-        """
-        logging.debug('Call to deprecated method, returning new method.')
+        logging.info('Call to deprecated method, returning new method.')
         return self.get_page_id(space, page)
 
     def get_page_id(self, space, page, content_type=None, timeout=10):
@@ -415,7 +392,11 @@ class Confluence(object):
 
     @deprecate_xmlrpc_notification
     def getSpaces(self):
-        logging.debug('Call to deprecated method, returning new method.')
+        """Deprecated method. Use get_spaces().
+
+        :returns new method: get_spaces().
+        """
+        logging.info('Call to deprecated method, returning new method.')
         return self.get_spaces(limit=1000)
 
     def get_spaces(self, limit=None, full=False, timeout=10):
@@ -500,6 +481,8 @@ class Confluence(object):
             response = None
         else:
             response = response.json()
+
+        # TODO: Add pretty response
 
         return response
 
@@ -846,71 +829,74 @@ class Confluence(object):
                 print("'%s' : %s" % (x, stats[x]))
         return result
 
-    # TODO: replace all of these with object methods. Leaving for backwards compatibility for now
-    @deprecate_xmlrpc_notification
-    def attach_file(self, server, token, space, title, files):
-        existing_page = server.confluence1.getPage(token, space, title)
 
-        for filename in files.keys():
-            try:
-                server.confluence1.removeAttachment(token, existing_page["id"], filename)
-            except Exception as e:
-                logging.exception("Skipping %s exception in removeAttachment" % e)
-            content_types = {
-                "gif": "image/gif",
-                "png": "image/png",
-                "jpg": "image/jpeg",
-                "jpeg": "image/jpeg",
-            }
-            extension = os.path.spl(filename)[1]
-            ty = content_types.get(extension, "application/binary")
-            attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
-            f = open(filename, "rb")
-            try:
-                byts = f.read()
-                logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
-                server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
-                logging.info("done")
-            except Exception:
-                logging.exception("Unable to attach %s", filename)
-            finally:
-                f.close()
+# TODO: replace all of these with object methods. Leaving for backwards compatibility for now
+@deprecate_xmlrpc_notification
+def attach_file(server, token, space, title, files):
+    existing_page = server.confluence1.getPage(token, space, title)
 
-    @deprecate_xmlrpc_notification
-    def remove_all_attachments(server, token, space, title):
-        existing_page = server.confluence1.getPage(token, space, title)
-
-        # Get a list of attachments
-        files = server.confluence1.getAttachments(token, existing_page["id"])
-
-        # Iterate through them all, removing each
-        numfiles = len(files)
-        i = 0
-        for f in files:
-            filename = f['fileName']
-            print("Removing %d of %d (%s)..." % (i, numfiles, filename))
-            server.confluence1.removeAttachment(token, existing_page["id"], filename)
-            i += 1
-
-    @deprecate_xmlrpc_notification
-    def write_page(server, token, space, title, content, parent=None):
-        parent_id = None
-        if parent is not None:
-            try:
-                # Find out the ID of the parent page
-                parent_id = server.confluence1.getPage(token, space, parent)['id']
-                print("parent page id is %s" % parent_id)
-            except:
-                print("couldn't find parent page; ignoring error...")
-
+    for filename in files.keys():
         try:
-            existing_page = server.confluence1.getPage(token, space, title)
+            server.confluence1.removeAttachment(token, existing_page["id"], filename)
+        except Exception as e:
+            logging.exception("Skipping %s exception in removeAttachment" % e)
+        content_types = {
+            "gif": "image/gif",
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+        }
+        extension = os.path.spl(filename)[1]
+        ty = content_types.get(extension, "application/binary")
+        attachment = {"fileName": filename, "contentType": ty, "comment": files[filename]}
+        f = open(filename, "rb")
+        try:
+            byts = f.read()
+            logging.info("calling addAttachment(%s, %s, %s, ...)", token, existing_page["id"], repr(attachment))
+            server.confluence1.addAttachment(token, existing_page["id"], attachment, xmlrpclib.Binary(byts))
+            logging.info("done")
+        except Exception:
+            logging.exception("Unable to attach %s", filename)
+        finally:
+            f.close()
+
+
+@deprecate_xmlrpc_notification
+def remove_all_attachments(server, token, space, title):
+    existing_page = server.confluence1.getPage(token, space, title)
+
+    # Get a list of attachments
+    files = server.confluence1.getAttachments(token, existing_page["id"])
+
+    # Iterate through them all, removing each
+    numfiles = len(files)
+    i = 0
+    for f in files:
+        filename = f['fileName']
+        print("Removing %d of %d (%s)..." % (i, numfiles, filename))
+        server.confluence1.removeAttachment(token, existing_page["id"], filename)
+        i += 1
+
+
+@deprecate_xmlrpc_notification
+def write_page(server, token, space, title, content, parent=None):
+    parent_id = None
+    if parent is not None:
+        try:
+            # Find out the ID of the parent page
+            parent_id = server.confluence1.getPage(token, space, parent)['id']
+            print("parent page id is %s" % parent_id)
         except:
-            # In case it doesn't exist
-            existing_page = {"space": space, "title": title}
+            print("couldn't find parent page; ignoring error...")
 
-        if parent_id is not None:
-            existing_page["parentId"] = parent_id
+    try:
+        existing_page = server.confluence1.getPage(token, space, title)
+    except:
+        # In case it doesn't exist
+        existing_page = {"space": space, "title": title}
 
-        existing_page["content"] = content
-        existing_page = server.confluence1.storePage(token, existing_page)
+    if parent_id is not None:
+        existing_page["parentId"] = parent_id
+
+    existing_page["content"] = content
+    existing_page = server.confluence1.storePage(token, existing_page)
