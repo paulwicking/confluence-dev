@@ -117,8 +117,19 @@ def test_get_page():
     conf.connection.close()
 
 
-def test_get_pages():
-    """Test that we get the pages in a space from the server."""
+def test_get_pages_with_full_json_response():
+    """Test retrieval of a JSON formatted dict of spaces from the server."""
+    conf = confluence.Confluence(profile='pycontribs-test')
+    result = conf.get_pages('ds', full=True)
+
+    assert "Let's edit this page (step 3 of 9)" in result['results'][0]['title']
+    assert 'elderberries' not in result['results'][0]['title']
+
+    conf.connection.close()
+
+
+def test_get_pages_with_pretty_response():
+    """Test that we get a list with the pages in a space from the server."""
     conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_pages('ds')
 

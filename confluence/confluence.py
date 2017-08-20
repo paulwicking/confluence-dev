@@ -266,7 +266,7 @@ class Confluence(object):
         """
         return self._server.confluence2.getPages(self._token2, space)
 
-    def get_pages(self, space, limit=None, timeout=10):
+    def get_pages(self, space, limit=None, full=False, timeout=10):
         """
         Gets all pages in a space. Returns full REST response as JSON object.
 
@@ -276,23 +276,44 @@ class Confluence(object):
         :param limit: The maximum number of pages returned.
         :type  limit: ``int``
 
+        :param full: Return pretty results or full JSON response.
+        :type  full: ``bool``
+
         :param timeout: Timeout in seconds
         :type  timeout: ``int`` or ``float``
 
         :return:
         """
-        request = self.base_url + 'content?type=page&spaceKey={space}'.format(
+        request = self.base_url + 'content?spaceKey={space}&expand=version'.format(
             space=space
         )
         if limit:
             request = request + '&limit={limit}'.format(limit=limit)
-        response = self.connection.get(request, timeout=timeout)
-        if not response.ok:
-            response = False
-        else:
-            response = response.json()['results']
 
-        return response
+        response = self.connection.get(request, timeout=timeout)
+        if not self.check_response(response):
+            logging.debug('Response check failed, returning None')
+            response = None
+            return response
+        else:
+            response = response.json()
+
+        if full:
+            logging.info('Returning full JSON response.')
+            return response
+
+        base_url = response['_links']['base']
+        clean_results = [
+            {'id': entry['id'],
+             # 'parent': entry['ancestors'],  # TODO get ancestors working
+             'space': space,
+             'title': entry['title'],
+             'url': base_url + entry['_links']['webui'],
+             'version': str(entry['version']['number'])}
+            for entry in response['results']]
+
+        logging.info('Returning pretty response.')
+        return clean_results
 
     @deprecate_xmlrpc_notification
     def getPageId(self, page, space):
@@ -311,7 +332,7 @@ class Confluence(object):
         logging.debug('Call to deprecated method, returning new method.')
         return self.get_page_id(space, page)
 
-    def get_page_id(self, space, page, content_type='page', timeout=10):
+    def get_page_id(self, space, page, content_type=None, timeout=10):
         """
         Returns the numeric id of a Confluence page or blog post.
 
@@ -331,9 +352,14 @@ class Confluence(object):
         :rtype ``int``
         :return: Page numeric id, or None if lookup fails.
         """
-        request = self.base_url + 'content?type={content_type}&spaceKey={space}&title={page}'.format(
-            content_type=content_type, space=space, page=page
+        # request = self.base_url + 'content?type={content_type}&spaceKey={space}&title={page}'.format(
+        #     content_type=content_type, space=space, page=page
+        # )
+        request = self.base_url + 'content?spaceKey={space}&title={page}'.format(
+            space=space, page=page
         )
+        if content_type is not None:
+            request = request + '&type={}'.format(content_type.lower())
         response = self.connection.get(request, timeout=timeout)
 
         if not self.check_response(response):
@@ -387,8 +413,8 @@ class Confluence(object):
              'type': entry['type'],
              'url': base_url + entry['key']}
             for entry in response['results']]
-        logging.info('Returning pretty response.')
 
+        logging.info('Returning pretty response.')
         return clean_results
 
     @deprecate_xmlrpc_notification
