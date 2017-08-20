@@ -75,6 +75,7 @@ def test_get_spaces_with_full_json_response():
     conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_spaces(full=True)
 
+    assert isinstance(result, dict)
     assert 'Demonstration Space' in result['results'][0]['name']
     assert 'elderberries' not in result['results'][0]['name']
 
@@ -86,6 +87,7 @@ def test_get_spaces_with_pretty_response():
     conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_spaces()
 
+    assert isinstance(result, list)
     assert 'Demonstration Space' in result[0]['name']
     assert 'elderberries' not in result[0]['name']
 
@@ -104,10 +106,10 @@ def test_get_blog_entry():
     conf.connection.close()
 
 
-def test_get_page():
+def test_get_page_with_full_json_response():
     """Test that we can retrieve one specific page."""
     conf = confluence.Confluence(profile='pycontribs-test')
-    result = conf.get_page('ds', 'Get serious with a table (step 5 of 9)')
+    result = conf.get_page('ds', 'Get serious with a table (step 5 of 9)', full=True)
 
     assert 'page' in result['results'][0]['type']
     assert 'Get serious with a table' in result['results'][0]['title']
@@ -117,11 +119,27 @@ def test_get_page():
     conf.connection.close()
 
 
+def test_get_page_with_pretty_response():
+    """Test that we can retrieve one specific page as a dict."""
+    conf = confluence.Confluence(profile='pycontribs-test')
+    result = conf.get_page('ds', 'Get serious with a table (step 5 of 9)')
+
+    assert isinstance(result, dict)
+
+    assert 'title' in result.keys()
+    assert 'Get serious with a table' in result['title']
+    assert 'elderberries' not in result['content']
+    assert 'Your table should look like this:' in result['content']
+
+    conf.connection.close()
+
+
 def test_get_pages_with_full_json_response():
     """Test retrieval of a JSON formatted dict of spaces from the server."""
     conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_pages('ds', full=True)
 
+    assert isinstance(result, dict)
     assert "Let's edit this page (step 3 of 9)" in result['results'][0]['title']
     assert 'elderberries' not in result['results'][0]['title']
 
@@ -133,6 +151,7 @@ def test_get_pages_with_pretty_response():
     conf = confluence.Confluence(profile='pycontribs-test')
     result = conf.get_pages('ds')
 
+    assert isinstance(result, list)
     assert len(result) == 10
 
     conf.connection.close()

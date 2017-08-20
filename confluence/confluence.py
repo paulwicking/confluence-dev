@@ -211,6 +211,19 @@ class Confluence(object):
 
         return response is not None
 
+    def get_user_by_key(self, key, timeout=10):
+        request = self.base_url + 'user?key={key}'.format(key=key)
+
+        response = self.connection.get(request, timeout=timeout)
+        if not response.ok:
+            logging.debug('Response check failed, returning None')
+            response = None
+            return response
+        else:
+            response = response.json()
+
+        return response['username']
+
     @deprecate_xmlrpc_notification
     def getPage(self, page, space):
         """
@@ -230,7 +243,7 @@ class Confluence(object):
             page = self._server.confluence1.getPage(self._token, space, page)
         return page
 
-    def get_page(self, space, page, timeout=10):
+    def get_page(self, space, page, full=False, timeout=10):
         """Returns a page object as a dictionary.
 
         :param page: The page name
@@ -239,19 +252,50 @@ class Confluence(object):
         :param space: The space name
         :type  space: ``str``
 
+        :param full: Return pretty results or full JSON response.
+        :type  full: ``bool``
+
+        :param timeout: Timeout in seconds
+        :type  timeout: ``int`` or ``float``
+
         :return: dictionary. result['content'] contains the body of the page.
         """
-        request = self.base_url + 'content?&spaceKey={space}&title={page}&expand=body.storage'.format(
+        request = self.base_url + 'content?&spaceKey={space}&title={page}&expand=body.storage,version,history'.format(
             space=space, page=page
         )
 
         response = self.connection.get(request, timeout=timeout)
         if not response.ok:
-            response = False
+            logging.debug('Response check failed, returning None')
+            response = None
+            return response
         else:
             response = response.json()
 
-        return response
+        if full:
+            logging.info('Returning full JSON response.')
+            return response
+
+        base_url = response['_links']['base']
+        response = response['results'][0]
+        clean_results = {
+            'content': response.get('body').get('storage').get('value'),
+            'status': response.get('status'),
+            'created': response.get('history').get('createdDate'),
+            'creator': response.get('history').get('createdBy').get('username'),
+            'current': response.get('history').get('latest'),
+            'id': response.get('id'),
+            'modified': response.get('version').get('when'),
+            'modifier': response.get('version').get('by').get('username'),
+            'space': space,
+            'title': response.get('title'),
+            'url': base_url + response.get('_links').get('webui'),
+            'version': str(response.get('version').get('number'))
+             }
+        # for entry in response['results']]
+
+        logging.info('Returning pretty response.')
+        return clean_results
 
     @deprecate_xmlrpc_notification
     def getPages(self, space):
@@ -449,7 +493,7 @@ class Confluence(object):
         """
         request = self.base_url + 'content?type=blogpost&spaceKey={space}' \
                                   '&title={title}&postingDay={post_date}' \
-                                  '&expand=space,body.view,version,container'\
+                                  '&expand=space,body.view,version,container' \
             .format(space=space, title=title, post_date=post_date)
         response = self.connection.get(request, timeout=timeout)
         if not self.check_response(response):
