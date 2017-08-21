@@ -85,7 +85,7 @@ class Confluence(object):
             >>> from confluence import Confluence
             >>>
             >>> conf = Confluence(profile='confluence')
-            >>> conf.storePageContent("test","test","hello world!")
+            >>> conf.get_page("ds","Welcome to Confluence")
 
         Also create a `config.ini` like this and put it in current directory, user home directory or PYTHONPATH.
 
@@ -177,7 +177,7 @@ class Confluence(object):
             result.raise_for_status()
 
         except requests.exceptions.RequestException as err:
-            logging.exception('Connection Error: {}').format(err)
+            logging.exception('Connection Error: {err}'.format(err))
             print(err)
             raise err
 
@@ -455,7 +455,7 @@ class Confluence(object):
             entry = self._server.confluence1.getBlogEntries(self._token, pageId)
         return entry
 
-    def get_blog_entry(self, space, title, post_date, full=False, timeout=10):
+    def get_blog_entry(self, space, title, post_date=None, full=False, timeout=10):
         """Get a blog page from the server.
 
         :param space: The space containing the blog.
@@ -472,10 +472,12 @@ class Confluence(object):
 
         :rtype: ``dict``
         """
-        request = self.base_url + 'content?type=blogpost&spaceKey={space}' \
-                                  '&title={title}&postingDay={post_date}' \
+        request = self.base_url + 'content?type=blogpost&spaceKey={space}&title={title}' \
                                   '&expand=space,body.view,version,container' \
-            .format(space=space, title=title, post_date=post_date)
+            .format(space=space, title=title)
+        if post_date:
+            request = request + '&postingDay={post_date}'.format(post_date=post_date)
+
         response = self.connection.get(request, timeout=timeout)
         if not self.check_response(response):
             logging.debug('Response check failed, returning None')
