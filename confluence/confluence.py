@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+from __future__ import unicode_literals
 from requests.auth import HTTPBasicAuth
 
 import copy
@@ -191,15 +192,12 @@ class Confluence(object):
         :rtype Boolean.
         """
 
-        if not response:
+        if response is None:
             logging.debug('Retrieved a NoneObject')
             response = None
 
         elif not response.ok:
-            logging.debug('Response not ok:\n'
-                          'Reason: %s: %s\n'
-                          'Request: %s'.format(response.status_code, response.reason, response.request.url)
-                          )
+            logging.debug('Response not ok: {}'.format(response.reason))
             response = None
         else:
             try:
@@ -473,37 +471,43 @@ class Confluence(object):
         :rtype: ``dict``
         """
         if '~' in space:  # make sure we get spaces containing tilde character, for personal spaces
+            logging.debug('Replacing ~ in space name with &#126.')
             space = space.replace('~', '&#126')
         request = self.base_url + 'content?type=blogpost&spaceKey={space}&title={title}' \
-                                  '&expand=space,body.view,version,container' \
+                                  '&expand=space,history,body.view,version' \
             .format(space=space, title=title)
         if post_date:
             request = request + '&postingDay={post_date}'.format(post_date=post_date)
 
+        logging.debug('Sending request: {request}'.format(request=request))
         response = self.connection.get(request, timeout=timeout)
-        if not self.check_response(response):
-            logging.debug('Response check failed, returning None')
-            response = None
-            return response
-        else:
-            response = response.json()
+        logging.debug('Got response:\n{response}'.format(response=response.json()))
+
+        # if not self.check_response(response):
+        #     logging.debug('Response check failed, returning None')
+        #     response = None
+        #     return response
+
+        response = response.json()
 
         if full:
             logging.info('Returning full JSON response.')
             return response
 
-        base_url = response['_links']['base']
-        response = response['results'][0]
-        clean_results = {
-            'author': response.get('history').get('createdBy').get('username'),
-            'content': response.get('body').get('storage').get('value'),
-            'id': response.get('id'),
-            'created': response.get('history').get('createdDate'),
-            'space': space,
-            'title': response.get('title'),
-            'url': base_url + response.get('_links').get('webui'),
-            'version': str(response.get('version').get('number'))
-        }
+        return response  # TODO: Figure out why full=None causes check_response() to fail
+
+        # base_url = response['_links']['base']
+        # response = response['results'][0]
+        # clean_results = {
+        #     'author': response.get('history').get('createdBy').get('username'),
+        #     'content': response.get('body').get('storage').get('value'),
+        #     'id': response.get('id'),
+        #     'created': response.get('history').get('createdDate'),
+        #     'space': space,
+        #     'title': response.get('title'),
+        #     'url': base_url + response.get('_links').get('webui'),
+        #     'version': str(response.get('version').get('number'))
+        # }
 
         # TODO: Add pretty response:
         # {'author': 'wowsuchnamaste',
@@ -517,8 +521,8 @@ class Confluence(object):
         #  'url': 'https://wowsu.ch/confluence/pages/viewpage.action?pageId=1179661',
         #  'version': '2'}
 
-        logging.info('Returning pretty response.')
-        return clean_results
+        # logging.info('Returning pretty response.')
+        # return clean_results
 
     @deprecate_xmlrpc_notification
     def getBlogEntries(self, space):
@@ -548,6 +552,8 @@ class Confluence(object):
 
         :rtype: TODO missing rtype.
         """
+
+        #  content?type=blogpost&start=0&limit=10&expand=space,history,body.view,metadata.labels
         pass
 
     @deprecate_xmlrpc_notification
@@ -812,6 +818,17 @@ class Confluence(object):
             return self._server.confluence2.convertWikiToStorageFormat(self._token2, markup)
         else:
             return self._server.confluence.convertWikiToStorageFormat(self._token2, markup)
+
+    def convert_wiki_to_storage_format(self):
+        """
+        POST -H 'Content-Type: application/json' -d'
+        {
+        "value":"{cheese}",
+        "representation":"wiki"
+        }'
+        https://your-domain.atlassian.net/wiki/rest/api/contentbody/convert/storage
+        """
+        pass
 
     @deprecate_xmlrpc_notification
     def getPagesWithErrors(self, stdout=True, caching=True):
