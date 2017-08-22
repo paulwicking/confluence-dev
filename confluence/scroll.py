@@ -14,8 +14,9 @@ def space_attributes_to_set(space_key):
               f" You must choose among [s]et, [a]dd, [r]emove and [c]lear.")
 
     # Query available attributes and their values
-    response = conf.connection.get(conf.base_url + f'/rest/scroll-versions/1.0/attribute/{space_key}')
-    for item in response:
+    AvailableAttributeList = conf.connection.get(conf.base_url + f'/rest/scroll-versions/1.0/attribute/{space_key}')
+
+    for item in AvailableAttributeList:
         # foreach($Attribute in $Response)
         # {
         #     foreach($Value in $Attribute.values)
@@ -26,10 +27,11 @@ def space_attributes_to_set(space_key):
             # $OutObj | Add - Member - MemberType: NoteProperty - Name:'Valueid' - Value:$Value.id
             # $AvailableAttributeList += $OutObj
             # }
+        pass
 
         print(f"Found the following attributes for space {space_key}:")
-        for num, attribute, value in AvailableAttributeList
-            print(f"{i}): {attribute}: {value}")
+        for num, attribute, value in AvailableAttributeList:
+            print(f"{num}: {attribute}: {value}")
 
     UserChoice = input("Please enter a comma-separated list of attributes (by index) you want to set:")
     while not UserChoice:
