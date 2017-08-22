@@ -177,7 +177,7 @@ class Confluence(object):
             result.raise_for_status()
 
         except requests.exceptions.RequestException as err:
-            logging.exception('Connection Error: {err}'.format(err))
+            logging.exception('Connection Error: {err}'.format(err=err))
             print(err)
             raise err
 
@@ -876,6 +876,40 @@ class Confluence(object):
             for x in stats:
                 print("'%s' : %s" % (x, stats[x]))
         return result
+
+    def get_child_pages(self, root_page_id):
+        """Get all child nodes of a page.
+
+        :param root_page_id: The numeric page id of the root node.
+        """
+        child_page_list = []
+        start = 0
+        limit = 25
+
+        response = self.connection.get(self.base_url + 'content/{root_page_id}/child/page?start={start}&limit={limit}'
+                                       .format(root_page_id=root_page_id, start=start, limit=limit))
+
+        out = {}
+        for item in response['results']:
+            out['title'] = item.get('title')
+            out['id'] = item.get('id')
+            child_page_list.append(out)
+        # start = len(response)
+
+        while len(response) >= response['size']:
+            # $Script: ChildPageList += $ChildPageList
+            #
+            # foreach($Item in $ChildPageList)
+            #     Get - ChildPages - RootPageId:$Item.id
+            pass
+        return out
+
+    def validate_not_null_or_empty():
+        # Invoke - RestMethod - Uri:$Method - Headers:
+        # {'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(
+        #     "$($Script:Credential.UserName)$(':')$($Script:Credential.GetNetworkCredential().Password)"))}
+        # }
+        pass
 
 
 # TODO: replace all of these with object methods. Leaving for backwards compatibility for now
