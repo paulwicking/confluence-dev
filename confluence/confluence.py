@@ -472,6 +472,8 @@ class Confluence(object):
 
         :rtype: ``dict``
         """
+        if '~' in space:  # make sure we get spaces containing tilde character, for personal spaces
+            space = space.replace('~', '&#126')
         request = self.base_url + 'content?type=blogpost&spaceKey={space}&title={title}' \
                                   '&expand=space,body.view,version,container' \
             .format(space=space, title=title)
@@ -903,13 +905,6 @@ class Confluence(object):
         #     #     Get - ChildPages - RootPageId:$Item.id
         #     pass
         return out
-
-    def validate_not_null_or_empty():
-        # Invoke - RestMethod - Uri:$Method - Headers:
-        # {'Authorization' = 'Basic ' + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(
-        #     "$($Script:Credential.UserName)$(':')$($Script:Credential.GetNetworkCredential().Password)"))}
-        # }
-        pass
 
 
 # TODO: replace all of these with object methods. Leaving for backwards compatibility for now
