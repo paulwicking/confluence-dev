@@ -1,42 +1,31 @@
 language: python
-sudo: true 
 matrix:
   fast_finish: false
 os:
 - linux
-cache:
-  directories:
-  - $HOME/amps-standalone-confluence-5.9.14
 python:
 - '2.7'
 - '3.4'
 - '3.5'
 - '3.6'
 before_install:
-- echo "deb https://sdkrepo.atlassian.com/debian/ stable contrib" | sudo tee -a /etc/apt/sources.list
-- sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys B07804338C015B73
-- sudo apt-get update -qq
+- openssl aes-256-cbc -K $encrypted_040939d57a62_key -iv $encrypted_040939d57a62_iv
+  -in config.ini.enc -out config.ini -d
 install:
-- sudo apt-get install apt-transport-https
-- sudo apt-get install atlassian-plugin-sdk
 - pip -q --log dist/pip.log install --upgrade pip setuptools tox-travis py wheel
 - python setup.py sdist bdist_wheel install
 - pip install ./dist/*.whl
 - pip --version
-before_script:
-- atlas-run-standalone -q -B -DskipAllPrompts=true --product confluence --version 5.9.14 </dev/zero 2>&1 &
-- sleep 300
+before_script: 
 script:
 - export PACKAGE_NAME=$(python setup.py --name)
 - export PACKAGE_VERSION=$(python setup.py --version)
 - python setup.py --version
 - tox --installpkg ./dist/*.whl --travis-after
-# validates that the build source distribution is installable using the old easy_install
 - pip uninstall -y $PACKAGE_NAME && easy_install ./dist/$PACKAGE_NAME-*.tar.gz
-after_success:
-#- coveralls
-#- bash <(curl -s https://codecov.io/bash)
-#- requires.io update-site -t ac3bbcca32ae03237a6aae2b02eb9411045489bb -r
+after_success: 
 notifications:
   email:
   - paulwicking@gmail.com
+  slack:
+    secure: IpC6/WwWAq5AwUIZDoCqnqnH1UXMTJ7y+gsvtgmen4TmMqepNgMiliMfXY/nzPtVnK1+U+/tpKN+9kNXvRpS4gDAHwN9Jt40Pbr9UgSD+NT3SdFf1dDAawYz+i3rgVE5M/6oGQj7+pZdVRi7e179T2Hwn6eI9u9IFBqWx9n2nGwKTpGFuwMZPUjaQ+nZz6PVicp4S7HI1vCEh4gmzp0yb4FNjWU96PQNm1/ISLAwbO59fHnLfuBFlzQj7DF62A03cEODO9jcuNLYTpy2TK+04/pgohg4L8FpgJFZrrgeYMpbPPDqq3RIcpfxxQ3Xv9+M9yNde9p53LDN3ZI2kqnsEuB6faWFSPrwfi6hh9LGxOme59BiqyK305vu9N/FM60wRG0Pz3O77ttJj3NlvLt+cKarTi7ZrVqfvoVbFz4eYw8REDKQB1S1oaVlh6yk6ZYm5oBYev/wSTPCbhUMb4V8u/cWmhd/OjqWXKWViMTtfqEQzfG21lg3nD0jSsCu7BlvDCmPg2N/scg2jpdOFPZgVuD/AGDaGfE6/ept5GAfrnNWErVan+MF+2baos2v3d17ddv86VVlznz8Hix3xm5qij/045bQfYNegH0xh0LU7zIFvwC8A13lmrVJzkqkdP5PH65QDhaCdBd6WXi8Q0kDYo4qyjCO3jYkkcx9HVGQIXk=

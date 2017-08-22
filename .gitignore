@@ -8,7 +8,7 @@
 .coverage.*
 .eggs/
 .tox/
-amps-standalone
+amps-standalone*
 build
 coverage.xml
 **/*.log
@@ -19,3 +19,4 @@ coverage.xml
 /tests/build
 confluence-dev.ipynb
 .ipynb_checkpoints/
+config.ini
