@@ -887,7 +887,7 @@ class Confluence(object):
         limit = 25
 
         response = self.connection.get(self.base_url + 'content/{root_page_id}/child/page?start={start}&limit={limit}'
-                                       .format(root_page_id=root_page_id, start=start, limit=limit))
+                                       .format(root_page_id=root_page_id, start=start, limit=limit)).json()
 
         out = {}
         for item in response['results']:
@@ -896,12 +896,12 @@ class Confluence(object):
             child_page_list.append(out)
         # start = len(response)
 
-        while len(response) >= response['size']:
-            # $Script: ChildPageList += $ChildPageList
-            #
-            # foreach($Item in $ChildPageList)
-            #     Get - ChildPages - RootPageId:$Item.id
-            pass
+        # while len(response) >= response['size']:
+        #     # $Script: ChildPageList += $ChildPageList
+        #     #
+        #     # foreach($Item in $ChildPageList)
+        #     #     Get - ChildPages - RootPageId:$Item.id
+        #     pass
         return out
 
     def validate_not_null_or_empty():
