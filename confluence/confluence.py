@@ -510,16 +510,7 @@ class Confluence(object):
         # }
 
         # TODO: Add pretty response:
-        # {'author': 'wowsuchnamaste',
-        #  'content': '<p><ac:structured-macro ac:name="loremipsum" ac:schema-version="1" \
-        # ac:macro-id="d63b8ee8-b840-4679-abd1-4008de8d3adf" /></p><p><br /></p><p>version 2</p>',
-        #  'id': '1179661',
-        #  'permissions': '0',
-        #  'publishDate': < DateTime '20170321T10:31:16' at 0x7fe1eff45198 >,
-        #  'space': '~wowsuchnamaste',
-        #  'title': 'This is my first blog post.',
-        #  'url': 'https://wowsu.ch/confluence/pages/viewpage.action?pageId=1179661',
-        #  'version': '2'}
+
 
         # logging.info('Returning pretty response.')
         # return clean_results

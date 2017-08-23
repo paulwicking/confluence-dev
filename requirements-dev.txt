@@ -2,6 +2,7 @@ flake8-docstrings
 flake8>=3.0.3
 BeautifulSoup4
 
+mock
 pep8>=1.7.0
 pytest-cache
 pytest-cov
