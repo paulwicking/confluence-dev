@@ -511,7 +511,6 @@ class Confluence(object):
 
         # TODO: Add pretty response:
 
-
         # logging.info('Returning pretty response.')
         # return clean_results
 
