@@ -1,15 +1,38 @@
 # from confluence import Confluence
-# import unittest.mock as mock
-#
-#
-# def test_connection_valid():
-#     with mock.patch('confluence.requests.get') as mock_requests:
-#         test_connection_valid()
-#
-#         mock_requests.assert_called_once_with('http://localhost')
-#
-#
-# def test_get_blog_entry_with_clean_results():
+import confluence
+from unittest.mock import MagicMock, patch
+import unittest.mock
+import pytest
+
+
+def setup_module(module):
+    print('setup_module')
+
+
+# @pytest.fixture
+# def mock_conf():
+#     return unittest.mock.Mock(spec=Confluence)
+
+
+def test_connection_valid():
+    # CONF = unittest.mock.Mock(return_value=mock_conf)
+    # monkeypatch.setattr('confluence.Confluence', CONF)
+    # conf = CONF
+    # mock_conf.connection = 'object'
+    # assert conf.valid_connection() == 'object'
+    # with mock.patch('confluence.test_valid_connection') as mock_requests:
+    #     test_connection_valid()
+    #
+    #     mock_requests.assert_called_once_with('http://localhost')
+    with patch('confluence.Confluence') as mock:
+        instance = mock.return_value
+        instance.method.return_value = 'the result'
+        result = confluence.Confluence()
+        assert result == 'the result'
+
+
+def test_get_blog_entry_with_clean_results():
+    pass
 #     expected_response = {
 #         'author': 'wowsuchnamaste',
 #         'content': '<p><ac:structured-macro ac:name="loremipsum" ac:schema-version="1" \
@@ -25,3 +48,7 @@
 #     actual_response = 'some string to change'
 #
 #     assert expected_response in actual_response
+
+
+def teardown_module(module):
+    print('teardown_module')

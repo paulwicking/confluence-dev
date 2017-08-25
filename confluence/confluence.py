@@ -194,18 +194,18 @@ class Confluence(object):
 
         if response is None:
             logging.debug('Retrieved a NoneObject')
-            response = None
+            return response is not None
 
         elif not response.ok:
             logging.debug('Response not ok: {}'.format(response.reason))
-            response = None
+            return response.ok
         else:
             try:
                 len(response.json()['results'][0]) < 1
             except IndexError:  # exception caused by lists of 0 length
                 logging.debug('Retrieved an empty list:\n'
                               'Request: {}'.format(response.request.url))
-                response = None
+                return False
 
         return response is not None
 
