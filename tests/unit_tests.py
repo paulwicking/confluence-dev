@@ -1,34 +1,67 @@
 # from confluence import Confluence
 import confluence
-from unittest.mock import MagicMock, patch
-import unittest.mock
+from unittest.mock import patch
+import unittest.mock as mock
 import pytest
+import requests
 
 
-def setup_module(module):
-    print('setup_module')
+@pytest.fixture()
+def mock_conf():
+    mock_confl = mock.Mock(spec=confluence.Confluence)
+    return mock_confl
+
+#
+# def test_connection_valid():
+#     # CONF = unittest.mock.Mock(return_value=mock_conf)
+#     # monkeypatch.setattr('confluence.Confluence', CONF)
+#     # conf = CONF
+#     # mock_conf.connection = 'object'
+#     # assert conf.valid_connection() == 'object'
+#     # with mock.patch('confluence.test_valid_connection') as mock_requests:
+#     #     test_connection_valid()
+#     #
+#     #     mock_requests.assert_called_once_with('http://localhost')
+#     with patch('confluence.Confluence') as mock:
+#         instance = mock.return_value
+#         instance.method.return_value = 'the result'
+#         result = confluence.Confluence()
+#         assert result is not None
 
 
-# @pytest.fixture
-# def mock_conf():
-#     return unittest.mock.Mock(spec=Confluence)
+@patch('confluence.Confluence.connection_valid')
+def test_confluence_init_method(mock_connection_valid):
+    mock_connection_valid.return_value = True
+    conf = confluence.Confluence(profile='wowsuch')
+
+    assert conf is not None
 
 
-def test_connection_valid():
-    # CONF = unittest.mock.Mock(return_value=mock_conf)
-    # monkeypatch.setattr('confluence.Confluence', CONF)
-    # conf = CONF
-    # mock_conf.connection = 'object'
-    # assert conf.valid_connection() == 'object'
-    # with mock.patch('confluence.test_valid_connection') as mock_requests:
-    #     test_connection_valid()
-    #
-    #     mock_requests.assert_called_once_with('http://localhost')
-    with patch('confluence.Confluence') as mock:
-        instance = mock.return_value
-        instance.method.return_value = 'the result'
-        result = confluence.Confluence()
-        assert result == 'the result'
+def test_confluence_init_method_ok():
+
+    def mock_get_ok(foo, bar):
+        return_object = mock.Mock()
+        return_object.ok = True
+        return return_object
+
+    with mock.patch.object(requests.Session, 'get', new=mock_get_ok):
+        # mock_connection_valid.return_value = None
+        conf = confluence.Confluence(profile='wowsuch')
+        assert conf.connection is not None
+        assert conf.connection_valid()
+
+
+def test_confluence_init_method_fails():
+
+    def mock_get_fail(foo, bar):
+        return_object = mock.Mock()
+        return_object.ok = False
+        return return_object
+
+    with mock.patch.object(requests.Session, 'get', new=mock_get_fail):
+        conf = confluence.Confluence(profile='wowsuch')
+        assert not conf.connection_valid()
+        assert conf.connection is None
 
 
 def test_get_blog_entry_with_clean_results():
@@ -50,5 +83,7 @@ def test_get_blog_entry_with_clean_results():
 #     assert expected_response in actual_response
 
 
-def teardown_module(module):
-    print('teardown_module')
+def test_just_a_try(mock_conf):
+
+    conf = mock_conf()
+    print(type(conf.connection_valid))

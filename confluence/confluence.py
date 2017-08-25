@@ -173,6 +173,8 @@ class Confluence(object):
 
         :rtype: Boolean
         """
+        if self.connection is None:
+            return False
         try:
             result = self.connection.get(self.base_url + 'content')
             result.raise_for_status()

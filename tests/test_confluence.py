@@ -143,8 +143,6 @@ def test_get_pages_with_full_json_response():
     assert "Let's edit this page (step 3 of 9)" in result['results'][0]['title']
     assert 'elderberries' not in result['results'][0]['title']
 
-    conf.connection.close()
-
 
 def test_get_pages_with_pretty_response():
     """Test that we get a list with the pages in a space from the server."""
@@ -153,5 +151,3 @@ def test_get_pages_with_pretty_response():
 
     assert isinstance(result, list)
     assert len(result) == 10
-
-    conf.connection.close()
