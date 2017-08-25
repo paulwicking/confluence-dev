@@ -50,7 +50,7 @@ def test_confluence_init_method_ok():
 
     with mock.patch.object(requests.Session, 'get', new=mock_get_ok):
         # mock_connection_valid.return_value = None
-        conf = confluence.Confluence(profile='wowsuch')
+        conf = confluence.Confluence(profile='pycontribs-test')
         assert conf.connection is not None
         assert conf.connection_valid()
 
@@ -63,7 +63,7 @@ def test_confluence_init_method_fails():
         return return_object
 
     with mock.patch.object(requests.Session, 'get', new=mock_get_fail):
-        conf = confluence.Confluence(profile='wowsuch')
+        conf = confluence.Confluence(profile='pycontribs-test')
         assert not conf.connection_valid()
         assert conf.connection is None
 
@@ -79,7 +79,7 @@ def test_get_blog_entry_with_clean_results():
 #         'publishDate': '< DateTime 20170321T10:31:16 at 0x7fe1eff45198 >',
 #         'space': '~wowsuchnamaste',
 #         'title': 'This is my first blog post.',
-#         'url': 'https://wowsu.ch/confluence/pages/viewpage.action?pageId=1179661',
+#         'url': 'https://confluence/pages/viewpage.action?pageId=1179661',
 #         'version': '2'}
 #
 #     actual_response = 'some string to change'
