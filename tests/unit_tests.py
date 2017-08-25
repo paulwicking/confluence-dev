@@ -1,7 +1,11 @@
 # from confluence import Confluence
 import confluence
-from unittest.mock import patch
-import unittest.mock as mock
+try:
+    from unittest.mock import patch
+    import unittest.mock as mock
+except ImportError:
+    from mock import patch
+    import mock
 import pytest
 import requests
 
@@ -32,7 +36,7 @@ def mock_conf():
 @patch('confluence.Confluence.connection_valid')
 def test_confluence_init_method(mock_connection_valid):
     mock_connection_valid.return_value = True
-    conf = confluence.Confluence(profile='wowsuch')
+    conf = confluence.Confluence(profile='pycontribs-test')
 
     assert conf is not None
 
