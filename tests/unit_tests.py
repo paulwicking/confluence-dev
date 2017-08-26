@@ -1,4 +1,3 @@
-# from confluence import Confluence
 import confluence
 try:
     from unittest.mock import patch
@@ -12,29 +11,18 @@ import requests
 
 @pytest.fixture()
 def mock_conf():
-    mock_confl = mock.Mock(spec=confluence.Confluence)
-    return mock_confl
-
-#
-# def test_connection_valid():
-#     # CONF = unittest.mock.Mock(return_value=mock_conf)
-#     # monkeypatch.setattr('confluence.Confluence', CONF)
-#     # conf = CONF
-#     # mock_conf.connection = 'object'
-#     # assert conf.valid_connection() == 'object'
-#     # with mock.patch('confluence.test_valid_connection') as mock_requests:
-#     #     test_connection_valid()
-#     #
-#     #     mock_requests.assert_called_once_with('http://localhost')
-#     with patch('confluence.Confluence') as mock:
-#         instance = mock.return_value
-#         instance.method.return_value = 'the result'
-#         result = confluence.Confluence()
-#         assert result is not None
+    return mock.Mock(spec=confluence.Confluence)
 
 
 @patch('confluence.Confluence.connection_valid')
 def test_confluence_init_method(mock_connection_valid):
+    """Tests Confluence.__init__().
+
+    This test uses a mock for the connection_valid() method in the class, as this is called by __init__() and requires
+    network access.
+
+    :param mock_connection_valid: Intercepted by unittest.mock.patch and replaces connection_valid() during test..
+    """
     mock_connection_valid.return_value = True
     conf = confluence.Confluence(profile='pycontribs-test')
 
@@ -42,14 +30,23 @@ def test_confluence_init_method(mock_connection_valid):
 
 
 def test_confluence_init_method_ok():
+    """Tests Confluence.__init__().
 
-    def mock_get_ok(foo, bar):
+    This test mocks the session created with requests.Session and asserts that the connection check passes.
+    """
+
+    def mock_get_ok(mock_self, mock_response):
+        """
+
+        :param foo:
+        :param bar:
+        :return:
+        """
         return_object = mock.Mock()
         return_object.ok = True
         return return_object
 
     with mock.patch.object(requests.Session, 'get', new=mock_get_ok):
-        # mock_connection_valid.return_value = None
         conf = confluence.Confluence(profile='pycontribs-test')
         assert conf.connection is not None
         assert conf.connection_valid()
@@ -87,7 +84,26 @@ def test_get_blog_entry_with_clean_results():
 #     assert expected_response in actual_response
 
 
-def test_just_a_try(mock_conf):
+def test_check_response_returns_false_on_invalid_response(mock_conf):
+    """"Tests that invalid response checks return False.
 
-    conf = mock_conf()
-    print(type(conf.connection_valid))
+    :param mock_conf: pytest decorator that returns a Mock Confluence object.
+    """
+    # call_that_causes_404 = conf.connection.get(conf.base_url +
+    #                                            'space/content?type=page&spaceKey=ds')
+    # call_that_returns_empty_results_list = conf.get_page_id('ds', 'another page')
+    #
+    # assert conf.check_response(call_that_causes_404) is False
+    # assert conf.check_response(call_that_returns_empty_results_list) is False
+    pass
+
+
+def test_check_response_returns_true_on_valid_response(mock_conf):
+    """
+
+    :param mock_conf: pytest decorator that returns a Mock Confluence object.
+    """
+    # call_that_succeeds = conf.connection.get(conf.base_url +
+    #                                          'content?type=page&spaceKey=ds')
+    # assert conf.check_response(call_that_succeeds) is True
+    pass

@@ -99,6 +99,7 @@ class Confluence(object):
             pass=...
 
         """
+        self.logging = logging
 
         def find_file(path):
             """
@@ -144,18 +145,6 @@ class Confluence(object):
         options['username'] = username
         options['password'] = password
 
-        self.logging = logging
-
-        socket.setdefaulttimeout(120)  # without this there is no timeout, and this may block the requests
-        # 60 - getPages() timeout one with this !
-        self._server = xmlrpclib.ServerProxy(
-            options['server'] +
-            '/rpc/xmlrpc', allow_none=True)  # using Server or ServerProxy ?
-
-        # TODO: get rid of this split and just set self.server, self.token
-        self._token = None
-        self._token2 = None
-
         # Set the base URL for REST calls.
         self.base_url = url + '/rest/api/'
 
@@ -164,9 +153,9 @@ class Confluence(object):
         self.connection.auth = HTTPBasicAuth(options['username'], options['password'])
 
         if not self.connection_valid():
-            logging.critical('Connection is None.')
+            self.logging.critical('Connection is None.')
 
-        logging.debug("Instantiated Confluence object.")
+        self.logging.debug("Instantiated Confluence object.")
 
     def connection_valid(self):
         """Checks if a connection to the Confluence server can be established.
@@ -180,7 +169,7 @@ class Confluence(object):
             result.raise_for_status()
 
         except requests.exceptions.RequestException as err:
-            logging.exception('Connection Error: {err}'.format(err=err))
+            self.logging.exception('Connection Error: {err}'.format(err=err))
             print(err)
             raise err
 
@@ -195,17 +184,17 @@ class Confluence(object):
         """
 
         if response is None:
-            logging.debug('Retrieved a NoneObject')
+            self.logging.debug('Retrieved a NoneObject')
             return response is not None
 
         elif not response.ok:
-            logging.debug('Response not ok: {}'.format(response.reason))
+            self.logging.debug('Response not ok: {}'.format(response.reason))
             return response.ok
         else:
             try:
                 len(response.json()['results'][0]) < 1
             except IndexError:  # exception caused by lists of 0 length
-                logging.debug('Retrieved an empty list:\n'
+                self.logging.debug('Retrieved an empty list:\n'
                               'Request: {}'.format(response.request.url))
                 return False
 
@@ -216,7 +205,7 @@ class Confluence(object):
 
         response = self.connection.get(request, timeout=timeout)
         if not response.ok:
-            logging.debug('Response check failed, returning None')
+            self.logging.debug('Response check failed, returning None')
             response = None
             return response
         else:
@@ -247,14 +236,14 @@ class Confluence(object):
 
         response = self.connection.get(request, timeout=timeout)
         if not response.ok:
-            logging.debug('Response check failed, returning None')
+            self.logging.debug('Response check failed, returning None')
             response = None
             return response
         else:
             response = response.json()
 
         if full:
-            logging.info('Returning full JSON response.')
+            self.logging.info('Returning full JSON response.')
             return response
 
         base_url = response['_links']['base']
@@ -274,7 +263,7 @@ class Confluence(object):
             'version': str(response.get('version').get('number'))
         }
 
-        logging.info('Returning pretty response.')
+        self.logging.info('Returning pretty response.')
         return clean_results
 
     @deprecate_xmlrpc_notification
@@ -312,14 +301,14 @@ class Confluence(object):
 
         response = self.connection.get(request, timeout=timeout)
         if not self.check_response(response):
-            logging.debug('Response check failed, returning None')
+            self.logging.debug('Response check failed, returning None')
             response = None
             return response
         else:
             response = response.json()
 
         if full:
-            logging.info('Returning full JSON response.')
+            self.logging.info('Returning full JSON response.')
             return response
 
         base_url = response['_links']['base']
@@ -332,7 +321,7 @@ class Confluence(object):
              'version': str(entry['version']['number'])}
             for entry in response['results']]
 
-        logging.info('Returning pretty response.')
+        self.logging.info('Returning pretty response.')
         return clean_results
 
     @deprecate_xmlrpc_notification
@@ -379,6 +368,7 @@ class Confluence(object):
         request = self.base_url + 'content?spaceKey={space}&title={page}'.format(
             space=space, page=page
         )
+        self.logging.debug('get_page_id request is:\n {request}'.format(request=request))
         if content_type is not None:
             request = request + '&type={}'.format(content_type.lower())
         response = self.connection.get(request, timeout=timeout)
@@ -449,11 +439,7 @@ class Confluence(object):
 
         :param pageId:
         """
-        if self._token2:
-            entry = self._server.confluence2.getBlogEntry(self._token2, pageId)
-        else:
-            entry = self._server.confluence1.getBlogEntries(self._token, pageId)
-        return entry
+        return self.get_blog_entry(pageId)
 
     def get_blog_entry(self, space, title, post_date=None, full=False, timeout=10):
         """Get a blog page from the server.
@@ -524,11 +510,7 @@ class Confluence(object):
         :param space: The space name
         :type  space: ``str``
         """
-        if self._token2:
-            entries = self._server.confluence2.getBlogEntries(self._token2, space)
-        else:
-            entries = self._server.confluence1.getBlogEntries(self._token, space)
-        return entries
+        pass
 
     def get_blog_entries(self, space, full=False, timeout=10):
         """Get a list of blogposts in a space.
