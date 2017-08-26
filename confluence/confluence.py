@@ -11,7 +11,6 @@ import logging
 import os
 import re
 import requests
-import socket
 import ssl
 import sys
 import warnings
@@ -195,7 +194,7 @@ class Confluence(object):
                 len(response.json()['results'][0]) < 1
             except IndexError:  # exception caused by lists of 0 length
                 self.logging.debug('Retrieved an empty list:\n'
-                              'Request: {}'.format(response.request.url))
+                                   'Request: {}'.format(response.request.url))
                 return False
 
         return response is not None
