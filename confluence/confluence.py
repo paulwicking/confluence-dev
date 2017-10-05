@@ -89,7 +89,7 @@ class Confluence(object):
 
         Also create a `config.ini` like this and put it in current directory, user home directory or PYTHONPATH.
 
-        .. code-block:: none
+        .. code-block:: nonek
 
             [confluence]
             url=https://confluence.atlassian.com
@@ -144,8 +144,10 @@ class Confluence(object):
         options['username'] = username
         options['password'] = password
 
+        self.base_url = url
+
         # Set the base URL for REST calls.
-        self.base_url = url + '/rest/api/'
+        self.rest_url = self.base_url + '/rest/api/'
 
         # Create a request session.
         self.connection = requests.Session()
@@ -164,7 +166,7 @@ class Confluence(object):
         if self.connection is None:
             return False
         try:
-            result = self.connection.get(self.base_url + 'content')
+            result = self.connection.get(self.rest_url + 'content')
             result.raise_for_status()
 
         except requests.exceptions.RequestException as err:
@@ -200,7 +202,7 @@ class Confluence(object):
         return response is not None
 
     def get_user_by_key(self, key, timeout=10):
-        request = self.base_url + 'user?key={key}'.format(key=key)
+        request = self.rest_url + 'user?key={key}'.format(key=key)
 
         response = self.connection.get(request, timeout=timeout)
         if not response.ok:
@@ -229,7 +231,7 @@ class Confluence(object):
 
         :return: dictionary. result['content'] contains the body of the page.
         """
-        request = self.base_url + 'content?&spaceKey={space}&title={page}&expand=body.storage,version,history'.format(
+        request = self.rest_url + 'content?&spaceKey={space}&title={page}&expand=body.storage,version,history'.format(
             space=space, page=page
         )
 
@@ -292,7 +294,7 @@ class Confluence(object):
 
         :return:
         """
-        request = self.base_url + 'content?spaceKey={space}&expand=version'.format(
+        request = self.rest_url + 'content?spaceKey={space}&expand=version'.format(
             space=space
         )
         if limit:
@@ -361,10 +363,7 @@ class Confluence(object):
         :rtype ``int``
         :return: Page numeric id, or None if lookup fails.
         """
-        # request = self.base_url + 'content?type={content_type}&spaceKey={space}&title={page}'.format(
-        #     content_type=content_type, space=space, page=page
-        # )
-        request = self.base_url + 'content?spaceKey={space}&title={page}'.format(
+        request = self.rest_url + 'content?spaceKey={space}&title={page}'.format(
             space=space, page=page
         )
         self.logging.debug('get_page_id request is:\n {request}'.format(request=request))
@@ -405,7 +404,7 @@ class Confluence(object):
                 full=False: ``list``
                 full=True: ``dict``
         """
-        request = self.base_url + 'space'
+        request = self.rest_url + 'space'
         if limit:
             request = request + '&limit={limit}'.format(limit=limit)
         response = self.connection.get(request, timeout=timeout)
@@ -460,7 +459,7 @@ class Confluence(object):
         if '~' in space:  # make sure we get spaces containing tilde character, for personal spaces
             logging.debug('Replacing ~ in space name with &#126.')
             space = space.replace('~', '&#126')
-        request = self.base_url + 'content?type=blogpost&spaceKey={space}&title={title}' \
+        request = self.rest_url + 'content?type=blogpost&spaceKey={space}&title={title}' \
                                   '&expand=space,history,body.view,version' \
             .format(space=space, title=title)
         if post_date:
@@ -878,7 +877,7 @@ class Confluence(object):
         start = 0
         limit = 25
 
-        response = self.connection.get(self.base_url + 'content/{root_page_id}/child/page?start={start}&limit={limit}'
+        response = self.connection.get(self.rest_url + 'content/{root_page_id}/child/page?start={start}&limit={limit}'
                                        .format(root_page_id=root_page_id, start=start, limit=limit)).json()
 
         out = {}
