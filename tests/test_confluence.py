@@ -23,16 +23,21 @@ def test_valid_connection(conf):
     assert response.json()['_links']['self'] == url_to_get
 
 
-def test_check_response(conf):
-    """"Tests that valid responses return True, invalid responses False."""
+def test_check_response_is_404_on_invalid_request(conf):
     call_that_causes_404 = conf.connection.get(conf.base_url +
                                                'space/content?type=page&spaceKey=ds')
+    assert conf.check_response(call_that_causes_404) is False
+
+
+def test_check_response_with_empty_results_list_is_false(conf):
     call_that_returns_empty_results_list = conf.get_page_id('ds', 'another page')
+    assert conf.check_response(call_that_returns_empty_results_list) is False
+
+
+def test_check_response_with_successful_request_is_true(conf):
+    """"Tests that valid responses return True, invalid responses False."""
     call_that_succeeds = conf.connection.get(conf.base_url +
                                              'content?type=page&spaceKey=ds')
-
-    assert conf.check_response(call_that_causes_404) is False
-    assert conf.check_response(call_that_returns_empty_results_list) is False
     assert conf.check_response(call_that_succeeds) is True
 
 
