@@ -8,10 +8,8 @@ from confluence import Confluence
 
 class ScrollVersions(object):
 
-    def __init__(self):
-        #  configuration settings
-        # TODO: Move to config.ini
-        self.conf = Confluence(url='https://confluence-test.vizrt.com', username='pwi', password='faK73matiN')
+    def __init__(self, confluence_instance):
+        self.conf = confluence_instance
         self.scroll_base_url = self.conf.base_url
 
     def get_response(self):
@@ -109,67 +107,35 @@ class ScrollVersions(object):
         child_page_list = []
         start = 0
         limit = 25
-        request = self.conf.base_url + f'/rest/api/content/{root_page_id}/child/page?start={start}&limit={limit}'
+        request = self.conf.base_url + '/rest/api/content/{}/child/page?start={}&limit={}'.format(
+            root_page_id, start, limit)
         response = self.conf.connection.get(request)
         for entry in response:
             child_page_list.append(entry)
+        number_of_children = len(child_page_list)
 
-        print(f'Found {len(child_page_list)} children:')
+        print('Found {} children:').format(number_of_children)
         for entry in child_page_list:
             print(entry)
 
         return child_page_list
 
     def get_all_available_attributes_and_values(self, space_key):
-        available_attributes = []
-
-        """
-         b'[
-             {"id":"AC1F010A015B101524C0D3F3445C4230",
-             "name":"Application",
-             "description":null,
-             "values":[
-                {"id":"AC1F010A015B101524C01E0F7B562196",
-                "name":"artist"},
-                {"id":"AC1F010A015B101524C041F806F4BFE3",
-                "name":"channelrecorder"},
-                {"id":"AC1F010A015B101524C086DB20233870",
-                "name":"engine"}
-                ]},
-                {"id":"AC1F010A015A8F9759FBF74422DC6D5C",
-                "name":"Target",
-                "description":"",
-                "values":[
-                    {"id":"AC1F010A015A8F9759FC9D6747E86259",
-                    "name":"admin"},
-                    {"id":"AC1F010A015A8F9759FC4D6E568C3CC7",
-                    "name":"ps"},
-                    {"id":"AC1F010A015A8F9759FCAC7B5F5957B5",
-                    "name":"user"}
-            ]}
-        ]'
-        """
-
-        request = f'{self.conf.base_url}/rest/scroll-versions/1.0/attribute/{space_key}'
+        request = '{}/rest/scroll-versions/1.0/attribute/{}'.format(self.conf.base_url, space_key)
         response = self.conf.connection.get(request).json()
-        for attribute in response:
-            for value in attribute:
-                available_attributes.append({
-                    'attribute_name': f'{attribute.name}',
-                    'attribute_id': f'{attribute.id}',
-                    'value_name': f'{value.name}',
-                    'value_id': f'{value.id}',
-                })
 
-        return available_attributes
+        return response
 
     def print_available_attributes(self, available_attributes):
-        print(f"Found the following attributes:")
-
+        print('Found the following attributes:')
         for entry in available_attributes:
-            #  Write-Host "$($i): $($Attributevalue.Attributename):$($Attributevalue.Valuename)
-            print(f"{available_attributes.index(entry)}: {entry['attribute_name']}.{entry['attribute_name']}:"
-                  f"{entry.attribute_value.value.name}:")
+            print('Attribute: ' + entry['name'])
+            print('ID: ' + entry['id'])
+            print('Values:')
+            for value in entry['values']:
+                print('        ' + value['name'])
+            print(' --- --- --- --- --- --- --- --- ---')
+
 
     """
     # Query user for which attributes to set, add or remove (example: 0,2,4)
