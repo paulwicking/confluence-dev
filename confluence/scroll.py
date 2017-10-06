@@ -41,7 +41,7 @@ class ScrollVersions(object):
         response = input('Do you want to [s]et or [c]lear attributes? ').lower()
 
         if response not in available_actions:
-            print(f'Your choice, {user_choice_action}, is not linked to an action. '
+            print(f'Your choice, {response}, is not linked to an action. '
                   f'You must choose among [s]et, [a]dd, [r]emove and [c]lear: ')
             return self.get_action_from_user()
         return response
@@ -54,8 +54,10 @@ class ScrollVersions(object):
 
         for page in pages:
             print(f'Setting attributes for page {page.title} - {page.id})')
-            request = f"{confluence_server}/rest/scroll-versions/1.0/metadata/page/{page.id})"
-            response = self.connection.get(request)
+            request = self.conf.base_url + "/rest/scroll-versions/1.0/metadata/page/{page.id})"
+            response = self.conf.connection.get(request)
+
+        return response
 
     def add_attributes(self, root_page_id, attribute):
         pass
@@ -64,9 +66,11 @@ class ScrollVersions(object):
         pages = self.get_child_page_list(root_page_id)
 
         for page in pages:
-            print(f'Setting attributes for page {page.title} - {page.id})')
-            request = f"{confluence_server}/rest/scroll-versions/1.0/metadata/page/{page.id})"
-            response = self.connection.get(request)
+            print(f'Setting {attribute} for page {page.title} - {page.id})')
+            # request = f"{confluence_server}/rest/scroll-versions/1.0/metadata/page/{page.id})"
+            # response = self.connection.get(request)
+
+        child_pages = []
 
         print(f'Ready to SET the following attribute values to {len(child_pages)} child pages of page {root_page_id}.\n'
               f'Proceed?')
@@ -105,8 +109,8 @@ class ScrollVersions(object):
         child_page_list = []
         start = 0
         limit = 25
-        request = f'{self.confluence_server}/rest/api/content/{root_page_id}/child/page?start={start}&limit={limit}'
-        response = self.connection.get(request)
+        request = self.conf.base_url + f'/rest/api/content/{root_page_id}/child/page?start={start}&limit={limit}'
+        response = self.conf.connection.get(request)
         for entry in response:
             child_page_list.append(entry)
 
@@ -166,7 +170,6 @@ class ScrollVersions(object):
             #  Write-Host "$($i): $($Attributevalue.Attributename):$($Attributevalue.Valuename)
             print(f"{available_attributes.index(entry)}: {entry['attribute_name']}.{entry['attribute_name']}:"
                   f"{entry.attribute_value.value.name}:")
-
 
     """
     # Query user for which attributes to set, add or remove (example: 0,2,4)

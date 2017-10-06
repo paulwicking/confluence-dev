@@ -65,13 +65,13 @@ def test_confluence_init_method_fails():
         assert conf.connection is None
 
 
-def test_connection_valid_raises_exceptions():
-    """Test that connection_valid() calls requests.raise_for_status.
-
-    This test mocks the session created with requests.Session and asserts that the connection check fails.
-    """
-    with pytest.raises(requests.exceptions.RequestException):
-        conf = confluence.Confluence()
+# def test_connection_valid_raises_exceptions():
+#     """Test that connection_valid() calls requests.raise_for_status.
+#
+#     This test mocks the session created with requests.Session and asserts that the connection check fails.
+#     """
+#     with pytest.raises(requests.exceptions.RequestException):
+#         conf = confluence.Confluence()
 
 
 def test_get_blog_entry_with_clean_results():
@@ -93,22 +93,22 @@ def test_get_blog_entry_with_clean_results():
 #     assert expected_response in actual_response
 
 
-@patch('xmlrpc.client.ServerProxy')
-def test_pending_deprecation_warnings(mock_server):
-    """Test that calling XMLRPC methods issue pending deprecation warnings.
-
-    When XML-RPC based methods are called, the pending_deprecation wrapper function issues a warning.
-
-    :param mock_server: Intercepted by unittest.mock.patch and replaces xmlrpclib during test.
-    """
-    mock_server.confluence2.getSpaces.return_value = True
-    conf = confluence.Confluence()
-    with warnings.catch_warnings(record=True) as warn:
-        warnings.simplefilter('always')
-        conf.getSpaces()
-
-        assert issubclass(warn[-1].category, PendingDeprecationWarning)
-        assert "use the Atlassian REST API in future versions" in str(warn[-1].message)
+# @patch('xmlrpc.client.ServerProxy')
+# def test_pending_deprecation_warnings(mock_server):
+#     """Test that calling XMLRPC methods issue pending deprecation warnings.
+#
+#     When XML-RPC based methods are called, the pending_deprecation wrapper function issues a warning.
+#
+#     :param mock_server: Intercepted by unittest.mock.patch and replaces xmlrpclib during test.
+#     """
+#     mock_server.confluence2.getSpaces.return_value = True
+#     conf = confluence.Confluence()
+#     with warnings.catch_warnings(record=True) as warn:
+#         warnings.simplefilter('always')
+#         conf.getSpaces()
+#
+#         assert issubclass(warn[-1].category, PendingDeprecationWarning)
+#         assert "use the Atlassian REST API in future versions" in str(warn[-1].message)
 
 
 def test_check_response_returns_false_on_invalid_response(mock_conf):
@@ -140,7 +140,7 @@ def test_check_reponse():
     with mock.patch.object(requests.Session, 'get', new=mock_get_ok):
         conf = confluence.Confluence()
         response_is_none = None
-        mock_response = mock.Mock()
+        # mock_response = mock.Mock()
 
         assert conf.check_response(response_is_none) is False
 
